@@ -7,7 +7,7 @@ import { QueryConcursos } from '@application/use-cases/QueryConcursos';
 
 export class LotofacilRESTApi {
   private app: express.Application;
-  
+
   constructor(
     private readonly processLotofacilData: ProcessLotofacilData,
     private readonly queryConcursos: QueryConcursos
@@ -19,11 +19,22 @@ export class LotofacilRESTApi {
   }
 
   private setupMiddlewares(): void {
-    this.app.use(helmet());
+    this.app.use(helmet({
+      contentSecurityPolicy: {
+        useDefaults: true,
+        directives: {
+          "script-src": ["'self'", "'unsafe-inline'"],
+        },
+      },
+    })
+    );
     this.app.use(cors());
     this.app.use(compression());
     this.app.use(express.json());
-    
+
+    // Servir arquivos estáticos da pasta 'static-html'
+    this.app.use(express.static('static-html'));
+
     // Log das requisições
     this.app.use((req: Request, res: Response, next: NextFunction) => {
       console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
@@ -34,8 +45,8 @@ export class LotofacilRESTApi {
   private setupRoutes(): void {
     // Health check
     this.app.get('/health', (req: Request, res: Response) => {
-      res.json({ 
-        status: 'OK', 
+      res.json({
+        status: 'OK',
         timestamp: new Date().toISOString(),
         service: 'Lotofácil Processor API'
       });
@@ -46,7 +57,7 @@ export class LotofacilRESTApi {
       try {
         console.log('Iniciando processamento de dados...');
         const result = await this.processLotofacilData.execute();
-        
+
         res.json({
           success: true,
           message: 'Dados processados com sucesso',
@@ -62,7 +73,7 @@ export class LotofacilRESTApi {
       try {
         const { limit } = req.query;
         let concursos;
-        
+
         if (limit) {
           const limitNum = parseInt(limit as string);
           if (isNaN(limitNum) || limitNum <= 0 || limitNum > 100) {
@@ -97,7 +108,7 @@ export class LotofacilRESTApi {
     this.app.get('/concursos/:numero', async (req: Request, res: Response, next: NextFunction) => {
       try {
         const numero = parseInt(req.params.numero || '0');
-        
+
         if (isNaN(numero) || numero <= 0) {
           return res.status(400).json({
             success: false,
@@ -106,7 +117,7 @@ export class LotofacilRESTApi {
         }
 
         const concurso = await this.queryConcursos.findByNumero(numero);
-        
+
         if (!concurso) {
           return res.status(404).json({
             success: false,
@@ -133,7 +144,7 @@ export class LotofacilRESTApi {
     this.app.get('/stats', async (req: Request, res: Response, next: NextFunction) => {
       try {
         const totalConcursos = await this.queryConcursos.getCount();
-        
+
         res.json({
           success: true,
           data: {
@@ -166,7 +177,7 @@ export class LotofacilRESTApi {
   private setupErrorHandling(): void {
     this.app.use((error: Error, req: Request, res: Response, next: NextFunction) => {
       console.error('Erro na API:', error);
-      
+
       res.status(500).json({
         success: false,
         message: 'Erro interno do servidor',

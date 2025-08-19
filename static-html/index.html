@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Concursos Lotofácil</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2em; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background: #eee; }
+  </style>
+</head>
+<body>
+  <h1>Concursos Lotofácil [limit=10]</h1>
+  <table id="concursos-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Data</th>
+        <th>Dezenas</th>
+        <th>Dezenas Ausentes</th>
+        <th>Dezenas Novas C. Anterior</th>
+        <th>Dezenas Repetidas C. Anterior</th>        
+        <!-- Adicione mais colunas conforme necessário -->
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <script>
+    fetch('/concursos?limit=10')
+  .then(res => res.json())
+  .then(data => {
+    const concursos = data.data;
+    const tbody = document.querySelector('#concursos-table tbody');
+    concursos.forEach(concurso => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${concurso.numero}</td>
+        <td>${concurso.data}</td>
+        <td>${concurso.dezenas.join(', ')}</td>
+        <td>${concurso.dezenasAusentes.join(', ')}</td>
+        <td>${concurso.dezenasNovasConcursoAnterior.join(', ')}</td>
+        <td>${concurso.dezenasRepetidasConcursoAnterior.join(', ')}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  });
+  </script>
+</body>
+</html>
