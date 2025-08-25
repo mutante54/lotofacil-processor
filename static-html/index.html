@@ -46,5 +46,30 @@
     });
   });
   </script>
+
+  <h1>Estatísticas (últimos 50 concursos)</h1>
+  <table id="stats-table">
+    <thead>
+      <tr>
+        <th style="background-color: mediumseagreen;">Dezenas que mais ocorrem</th>
+        <th style="background-color: burlywood">Dezenas mais ausentes</th>            
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <script>
+    fetch('/stats?limit=50')
+  .then(res => res.json())
+  .then(data => {
+    const estatisticas = data.data.estatisticas;
+    const tbody = document.querySelector('#stats-table tbody');
+     const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${estatisticas.maisSorteadas.map(item => '<b>' + item.dezena + ' </b> (' + item.ocorrencias + ')').join(', ')}</td>
+        <td>${estatisticas.maisAusentes.map(item => '<b>' + item.dezena + ' </b> (' + item.concursosSemSair + ')').join(', ')}</td>        
+      `;
+      tbody.appendChild(tr);   
+  });
+  </script>
 </body>
 </html>

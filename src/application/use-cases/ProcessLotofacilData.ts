@@ -1,6 +1,7 @@
 import { ConcursoRepository } from '@domain/ports/ConcursoRepository';
 import { LotofacilDataProvider } from '@domain/ports/LotofacilDataProvider';
-import { DezenasEstatisticas, DezenaOcorrencia, DezenaAusente } from '@domain/value-objects/DezenasEstatisticas';
+import { DezenasEstatisticas } from '@domain/value-objects/DezenasEstatisticas';
+import { DezenasEstatisticasService } from '@application/services/DezenasEstatisticasService';
 
 export class ProcessLotofacilData {
   constructor(
@@ -49,57 +50,13 @@ export class ProcessLotofacilData {
     }
 
     console.log('Calculando estatísticas dos últimos 50 concursos...');
-    const estatisticas = await this.calculateStatistics();
+    const latest50 = await this.concursoRepository.findLatest(50);
+    const estatisticas = DezenasEstatisticasService.calcular(latest50);
 
     return {
       totalProcessed: concursos.length,
       totalNew: newConcursos,
       estatisticas
     };
-  }
-
-  private async calculateStatistics(): Promise<DezenasEstatisticas> {
-    const latest50 = await this.concursoRepository.findLatest(50);
-
-    // Calcula as dezenas mais sorteadas
-    const ocorrencias = new Map<number, number>();
-    for (let dezena = 1; dezena <= 25; dezena++) {
-      ocorrencias.set(dezena, 0);
-    }
-
-    for (const concurso of latest50) {
-      for (const dezena of concurso.dezenas) {
-        const count = ocorrencias.get(dezena) || 0;
-        ocorrencias.set(dezena, count + 1);
-      }
-    }
-
-    const maisSorteadas: DezenaOcorrencia[] = Array.from(ocorrencias.entries())
-      .map(([dezena, count]) => ({ dezena, ocorrencias: count }));
-
-    // Calcula as dezenas mais ausentes
-    const maisAusentes: DezenaAusente[] = [];
-    const concursosOrdenados = [...latest50].sort((a, b) => b.numero - a.numero);
-
-    for (let dezena = 1; dezena <= 25; dezena++) {
-      let concursosSemSair = 0;
-      let ultimoConcurso: number | undefined;
-
-      for (const concurso of concursosOrdenados) {
-        if (concurso.containsDezena(dezena)) {
-          ultimoConcurso = concurso.numero;
-          break;
-        }
-        concursosSemSair++;
-      }
-
-      maisAusentes.push({
-        dezena,
-        concursosSemSair,
-        ultimoConcurso
-      });
-    }
-
-    return DezenasEstatisticas.create(maisSorteadas, maisAusentes, latest50.length);
   }
 }

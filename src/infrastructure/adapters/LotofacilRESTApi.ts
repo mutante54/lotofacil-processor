@@ -143,13 +143,13 @@ export class LotofacilRESTApi {
     // Estatísticas
     this.app.get('/stats', async (req: Request, res: Response, next: NextFunction) => {
       try {
-        const totalConcursos = await this.queryConcursos.getCount();
+        const estatisticas = await this.queryConcursos.getDezenasEstatisticas(50);
 
         res.json({
           success: true,
           data: {
-            totalConcursos,
-            message: 'Para obter estatísticas detalhadas, execute o processamento primeiro'
+            estatisticas,
+            message: 'Para obter estatísticas atualizadas, execute o processamento primeiro'
           }
         });
       } catch (error) {
