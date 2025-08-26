@@ -21,6 +21,8 @@ interface ConcursoDocument extends Document {
   dezenasNaoSorteadas: number[];
   dezenasSorteadasMasAusentesConcursoAnterior: number[];
   dezenasSorteadasERepetidasConcursoAnterior: number[];
+  estaticPreConcMaisOcorrencias: number[];
+  estaticPreConcMaisAtrasadas: number[];
 }
 
 const concursoSchema = new Schema<ConcursoDocument>({
@@ -41,7 +43,9 @@ const concursoSchema = new Schema<ConcursoDocument>({
   acumulado15: { type: Number, required: true, min: 0 },
   dezenasNaoSorteadas: { type: [Number], required: true },
   dezenasSorteadasMasAusentesConcursoAnterior: { type: [Number], required: false },
-  dezenasSorteadasERepetidasConcursoAnterior: { type: [Number], required: false }
+  dezenasSorteadasERepetidasConcursoAnterior: { type: [Number], required: false },
+  estaticPreConcMaisOcorrencias: { type: [Number], required: false },
+  estaticPreConcMaisAtrasadas: { type: [Number], required: false }
 }, {
   timestamps: true,
   versionKey: false
@@ -54,6 +58,22 @@ function arrayLimit(val: number[]): boolean {
 const ConcursoModel = model<ConcursoDocument>('Concurso', concursoSchema);
 
 export class MongoConcursoRepository implements ConcursoRepository {
+  
+  async update(numero: number, concurso: Concurso): Promise<void> {
+    await ConcursoModel.updateOne(
+      { numero },
+      this.toDocument(concurso),
+      { upsert: false }
+    ).exec();
+  }
+  
+  async findBetweenNumeros(start: number, end: number): Promise<Concurso[]> {
+    const documents = await ConcursoModel
+      .find({ numero: { $gte: start, $lte: end } })
+      .sort({ numero: 1 })
+      .exec();
+    return documents.map(doc => this.toDomain(doc));
+  }
   private isConnected = false;
 
   async connect(connectionString: string): Promise<void> {
@@ -130,7 +150,9 @@ export class MongoConcursoRepository implements ConcursoRepository {
       acumulado15: premiacoes.acumulado15,
       dezenasNaoSorteadas: concurso.dezenasNaoSorteadas,
       dezenasSorteadasMasAusentesConcursoAnterior: concurso.dezenasSorteadasMasAusentesConcursoAnterior,
-      dezenasSorteadasERepetidasConcursoAnterior: concurso.dezenasSorteadasERepetidasConcursoAnterior
+      dezenasSorteadasERepetidasConcursoAnterior: concurso.dezenasSorteadasERepetidasConcursoAnterior,
+      estaticPreConcMaisOcorrencias: concurso.estaticPreConcMaisOcorrencias,
+      estaticPreConcMaisAtrasadas: concurso.estaticPreConcMaisAtrasadas
     };
   }
 
@@ -152,7 +174,9 @@ export class MongoConcursoRepository implements ConcursoRepository {
       document.valorRateio11,
       document.acumulado15,
       document.dezenasSorteadasMasAusentesConcursoAnterior,
-      document.dezenasSorteadasERepetidasConcursoAnterior
+      document.dezenasSorteadasERepetidasConcursoAnterior,
+      document.estaticPreConcMaisOcorrencias,
+      document.estaticPreConcMaisAtrasadas
     );
   }
 }

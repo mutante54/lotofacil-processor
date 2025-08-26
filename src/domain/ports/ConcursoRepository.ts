@@ -6,7 +6,9 @@ export interface ConcursoRepository {
   findByNumero(numero: number): Promise<Concurso | null>;
   findAll(): Promise<Concurso[]>;
   findLatest(limit: number): Promise<Concurso[]>;
+  findBetweenNumeros(start: number, end: number): Promise<Concurso[]>;
   exists(numero: number): Promise<boolean>;
   count(): Promise<number>;
   deleteAll(): Promise<void>;
+  update(numero: number, concurso: Concurso): Promise<void>;
 }

@@ -19,15 +19,16 @@ export class DezenasEstatisticas {
   static create(
     maisSorteadas: DezenaOcorrencia[],
     maisAusentes: DezenaAusente[],
-    totalConcursosAnalisados: number
+    totalConcursosAnalisados: number,
+    qtdTop: number = 10
   ): DezenasEstatisticas {
     const sortedMaisSorteadas = [...maisSorteadas]
       .sort((a, b) => b.ocorrencias - a.ocorrencias)
-      .slice(0, 10);
+      .slice(0, qtdTop);
 
     const sortedMaisAusentes = [...maisAusentes]
       .sort((a, b) => b.concursosSemSair - a.concursosSemSair)
-      .slice(0, 10);
+      .slice(0, qtdTop);
 
     return new DezenasEstatisticas(
       sortedMaisSorteadas,

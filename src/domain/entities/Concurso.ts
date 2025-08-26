@@ -1,7 +1,7 @@
 
 import { Exclude } from 'class-transformer';
 
-export class Concurso {
+export class Concurso {  
 
   @Exclude()
   private static readonly TODAS_DEZENAS = Array.from({ length: 25 }, (_, i) => i + 1);
@@ -25,7 +25,9 @@ export class Concurso {
     private readonly _valorRateio11: number,
     private readonly _acumulado15: number,
     private _dezenasSorteadasMasAusentesConcursoAnterior?: number[],
-    private _dezenasSorteadasERepetidasConcursoAnterior?: number[]
+    private _dezenasSorteadasERepetidasConcursoAnterior?: number[],
+    private _estaticPreConcMaisOcorrencias?: number[],
+    private _estaticPreConcMaisAtrasadas?: number[]
   ) {
     this.validateDezenas();
     this._dezenasNaoSorteadas = Concurso.TODAS_DEZENAS.filter(d => !this._dezenas.includes(d));
@@ -48,7 +50,9 @@ export class Concurso {
     valorRateio11: number,
     acumulado15: number,
     dezenasSorteadasMasAusentesConcursoAnterior?: number[],
-    dezenasSorteadasERepetidasConcursoAnterior?: number[]
+    dezenasSorteadasERepetidasConcursoAnterior?: number[],
+    estaticPreConcMaisOcorrencias?: number[],
+    estaticPreConcMaisAtrasadas?: number[]
   ): Concurso {
     return new Concurso(
       numero,
@@ -67,7 +71,9 @@ export class Concurso {
       valorRateio11,
       acumulado15,
       dezenasSorteadasMasAusentesConcursoAnterior,
-      dezenasSorteadasERepetidasConcursoAnterior
+      dezenasSorteadasERepetidasConcursoAnterior,
+      estaticPreConcMaisOcorrencias,
+      estaticPreConcMaisAtrasadas
     );
   }
 
@@ -148,6 +154,19 @@ export class Concurso {
   }
   public set dezenasSorteadasERepetidasConcursoAnterior(value: number[]) {
     this._dezenasSorteadasERepetidasConcursoAnterior = value;
+  }
+
+  public get estaticPreConcMaisAtrasadas(): number[] {
+    return this._estaticPreConcMaisAtrasadas ?? [];
+  }
+  public set estaticPreConcMaisAtrasadas(value: number[]) {
+    this._estaticPreConcMaisAtrasadas = value;
+  }
+  public get estaticPreConcMaisOcorrencias(): number[] {
+    return this._estaticPreConcMaisOcorrencias ?? [];
+  }
+  public set estaticPreConcMaisOcorrencias(value: number[]) {
+    this._estaticPreConcMaisOcorrencias = value;
   }
 
   containsDezena(dezena: number): boolean {

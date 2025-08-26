@@ -4,6 +4,10 @@ import { DezenasEstatisticas } from '@domain/value-objects/DezenasEstatisticas';
 import { DezenasEstatisticasService } from '@application/services/DezenasEstatisticasService';
 
 export class ProcessLotofacilData {
+
+  private static readonly LATEST_QTD = 50;
+  private static readonly TOP_ESTATISTICAS_QTD = 10;
+
   constructor(
     private readonly concursoRepository: ConcursoRepository,
     private readonly dataProvider: LotofacilDataProvider
@@ -46,12 +50,28 @@ export class ProcessLotofacilData {
       if (newBatch.length > 0) {
         await this.concursoRepository.saveMany(newBatch);
         console.log(`Salvos ${newBatch.length} novos concursos (lote ${Math.floor(i / batchSize) + 1})`);
+
+        // processando estaticas específicas para os concursos ja salvos
+        for (const concurso of newBatch) {
+          if (concurso.numero > ProcessLotofacilData.LATEST_QTD) {
+            const latest = await this.concursoRepository.findBetweenNumeros(
+              (concurso.numero - ProcessLotofacilData.LATEST_QTD),
+              concurso.numero - 1
+            );
+            const estatisticas = DezenasEstatisticasService.calcular(latest, ProcessLotofacilData.TOP_ESTATISTICAS_QTD);
+            concurso.estaticPreConcMaisOcorrencias = estatisticas.maisSorteadas.map(d => d.dezena);
+            concurso.estaticPreConcMaisAtrasadas = estatisticas.maisAusentes.map(d => d.dezena);
+
+            // Atualiza o concurso na base
+            await this.concursoRepository.update(concurso.numero, concurso);
+          }
+        }
       }
     }
 
-    console.log('Calculando estatísticas dos últimos 50 concursos...');
-    const latest50 = await this.concursoRepository.findLatest(50);
-    const estatisticas = DezenasEstatisticasService.calcular(latest50);
+    console.log('Calculando estatísticas dos últimos 50 concursos (inclusive concurso atual)...');
+    const latest = await this.concursoRepository.findLatest(ProcessLotofacilData.LATEST_QTD);
+    const estatisticas = DezenasEstatisticasService.calcular(latest, ProcessLotofacilData.TOP_ESTATISTICAS_QTD);
 
     return {
       totalProcessed: concursos.length,

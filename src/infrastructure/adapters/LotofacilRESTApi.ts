@@ -96,6 +96,9 @@ export class LotofacilRESTApi {
             dezenasAusentes: concurso.dezenasNaoSorteadas,
             dezenasNovasConcursoAnterior: concurso.dezenasSorteadasMasAusentesConcursoAnterior,
             dezenasRepetidasConcursoAnterior: concurso.dezenasSorteadasERepetidasConcursoAnterior,
+            estaticPreConcMaisOcorrencias: concurso.estaticPreConcMaisOcorrencias,
+            estaticPreConcMaisAtrasadas: concurso.estaticPreConcMaisAtrasadas
+            
           })),
           total: concursos.length
         });

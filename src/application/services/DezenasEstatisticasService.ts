@@ -2,8 +2,11 @@ import { DezenasEstatisticas, DezenaOcorrencia, DezenaAusente } from '@domain/va
 import { Concurso } from '@domain/entities/Concurso';
 
 export class DezenasEstatisticasService {
-    
-  static calcular(concursos: Concurso[]): DezenasEstatisticas {
+
+  static calcular(concursos: Concurso[], qtdToSlice: number = 10): DezenasEstatisticas {
+    if (concursos == null || concursos.length === 0) {
+      return DezenasEstatisticas.create([], [], 0, qtdToSlice);
+    }
     // Calcula as dezenas mais sorteadas
     const ocorrencias = new Map<number, number>();
     for (let dezena = 1; dezena <= 25; dezena++) {
@@ -43,6 +46,6 @@ export class DezenasEstatisticasService {
       });
     }
 
-    return DezenasEstatisticas.create(maisSorteadas, maisAusentes, concursos.length);
+    return DezenasEstatisticas.create(maisSorteadas, maisAusentes, concursos.length, qtdToSlice);
   }
 }
