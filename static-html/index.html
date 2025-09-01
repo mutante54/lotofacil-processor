@@ -11,13 +11,25 @@
   </style>
 </head>
 <body>
-  <h1>Concursos Lotofácil [limit=10]</h1>
+  <h1>Estatísticas (últimos 50 concursos)</h1>
+  <table id="stats-table">
+    <thead>
+      <tr>
+        <th style="background-color: mediumseagreen;">Dezenas que mais ocorrem</th>
+        <th style="background-color: #f2f28a">Dezenas mais ausentes</th>            
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>  
+  <h1>Concursos Lotofácil</h1><span>[limitDataAnalysis=50] [limitDisplay=10]</span>
+<br/><br/>
   <table id="concursos-table">
     <thead>
       <tr>
         <th>ID</th>
         <th>Data</th>
         <th>Dezenas</th>
+        <th>Oc. / Aus. / Amb.</th>
         <th>Dezenas Ausentes</th>
         <th>Dezenas Novas C. Anterior</th>
         <th>Dezenas Repetidas C. Anterior</th>        
@@ -27,49 +39,123 @@
     <tbody></tbody>
   </table>
   <script>
-    fetch('/concursos?limit=10')
+    const limitDataAnalysis = 50; // Alterar aqui o limite de concursos exibidos/ dados estatísticas
+    const limitConcursosDisplay = 10; // Alterar aqui o limite de concursos exibidos na tabela
+    fetch('/concursos?limit=' + limitDataAnalysis)
   .then(res => res.json())
-  .then(data => {
-    const concursos = data.data;
+  .then(dataConcursos => {
+    const concursos = dataConcursos.data;
+    let somaOcAusAmbTotal = 0;
+    let somaCountDezenasAusentes = 0;
+    let somaCountDezenasNovasCA = 0;
+    let somaCountDezenasRepetidasCA = 0;
+    let somaCountMaisOcorremTotal = 0;
+    let somaCountMaisAtrasadasTotal = 0;
+    let somaCountAmbasTotal = 0;
     const tbody = document.querySelector('#concursos-table tbody');
-    concursos.forEach(concurso => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${concurso.numero}</td>
-        <td>${concurso.data}</td>
-        <td>${concurso.dezenas.join(', ')}</td>
-        <td>${concurso.dezenasAusentes.join(', ')}</td>
-        <td>${concurso.dezenasNovasConcursoAnterior.join(', ')}</td>
-        <td>${concurso.dezenasRepetidasConcursoAnterior.join(', ')}</td>
-      `;
-      tbody.appendChild(tr);
-    });
-  });
-  </script>
+    let firstConcurso = concursos[0];
+    let concursoIndex = 0;
+    let estatisticas = {};
+    fetch('/stats?limit=' + limitDataAnalysis)
+    .then(res => res.json())
+      .then(data => {
+        estatisticas = data.data.estatisticas;        
+        concursos.forEach(concurso => {
+          concursoIndex++;
+          // Array de dezenas que devem ser destacadas
+          const destaqueMaisOcorrem = concurso.estaticPreConcMaisOcorrencias || [];
+          const destaqueMaisAtrasadas = concurso.estaticPreConcMaisAtrasadas || [];
+          let countMaisOcorrem = 0;
+          let countMaisAtrasadas = 0;
+          let countAmbas = 0;
 
-  <h1>Estatísticas (últimos 50 concursos)</h1>
-  <table id="stats-table">
-    <thead>
-      <tr>
-        <th style="background-color: mediumseagreen;">Dezenas que mais ocorrem</th>
-        <th style="background-color: burlywood">Dezenas mais ausentes</th>            
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-  <script>
-    fetch('/stats?limit=50')
-  .then(res => res.json())
-  .then(data => {
-    const estatisticas = data.data.estatisticas;
-    const tbody = document.querySelector('#stats-table tbody');
-     const tr = document.createElement('tr');
-      tr.innerHTML = `
+          somaCountDezenasAusentes += concurso.dezenasAusentes.length;
+          somaCountDezenasNovasCA += concurso.dezenasNovasConcursoAnterior.length;
+          somaCountDezenasRepetidasCA += concurso.dezenasRepetidasConcursoAnterior.length;
+
+          // Renderiza cada dezena com cor de fundo se estiver em destaque
+          const dezenasHtml = concurso.dezenas.map(dezena => {
+            let backColor  = 'none';
+            const isDestaqueMaisOcorrem = destaqueMaisOcorrem.includes(dezena);
+            const isDestaqueMaisAtrasadas = destaqueMaisAtrasadas.includes(dezena);
+            if (isDestaqueMaisOcorrem && isDestaqueMaisAtrasadas) {
+              backColor = 'thistle'; // Cor para ambas as condições
+              countAmbas++;
+            } else if (isDestaqueMaisOcorrem) {
+              backColor = 'mediumseagreen'; // Cor para mais ocorrem
+              countMaisOcorrem++;
+            } else if (isDestaqueMaisAtrasadas) {
+              backColor = '#f2f28a'; // Cor para mais atrasadas
+              countMaisAtrasadas++;
+            }
+            return `<span style="background:${backColor};padding:2px 6px;border-radius:4px;">${dezena}</span>`;
+          }).join(', ');
+          let somaOcAusAmb = (countMaisOcorrem + countMaisAtrasadas + countAmbas);
+          somaOcAusAmbTotal += somaOcAusAmb;
+          somaCountMaisAtrasadasTotal += countMaisAtrasadas;
+          somaCountMaisOcorremTotal += countMaisOcorrem;
+          somaCountAmbasTotal += countAmbas;
+
+          let dezenasAusentesHtml = null;
+          if (concurso.numero === firstConcurso.numero) {       
+            // Renderiza cada dezena ausente com cor de fundo se estiver em destaque
+            dezenasAusentesHtml = concurso.dezenasAusentes.map(dezenaAusente => {
+              let backColor  = 'none';
+              const isDestaqueMaisOcorrem = estatisticas.maisSorteadas.filter(item => item.dezena === dezenaAusente).length > 0;
+              const isDestaqueMaisAtrasadas = estatisticas.maisAusentes.filter(item => item.dezena === dezenaAusente).length > 0;
+              if (isDestaqueMaisOcorrem && isDestaqueMaisAtrasadas) {
+                backColor = 'thistle'; // Cor para ambas as condições
+              } else if (isDestaqueMaisOcorrem) {
+                backColor = 'mediumseagreen'; // Cor para mais ocorrem
+              } else if (isDestaqueMaisAtrasadas) {
+                backColor = '#f2f28a'; // Cor para mais atrasadas
+              }
+              return `<span style="background:${backColor};padding:2px 6px;border-radius:4px;">${dezenaAusente}</span>`;
+            }).join(', ');
+          }
+          if (concursoIndex <= limitConcursosDisplay){
+            const tr = document.createElement('tr');
+            tr.innerHTML = `            
+            <td>${concurso.numero}</td>
+            <td>${concurso.data.substring(0,10)}</td>
+            <td>${dezenasHtml}</td>
+            <td>${countMaisOcorrem} / ${countMaisAtrasadas} / ${countAmbas} - <b>(${somaOcAusAmb})</b></td>
+            <td>${dezenasAusentesHtml ? dezenasAusentesHtml : concurso.dezenasAusentes.join(', ')}</td>
+            <td>${concurso.dezenasNovasConcursoAnterior.join(', ')} - <b>(${concurso.dezenasNovasConcursoAnterior.length})</b></td>
+            <td>${concurso.dezenasRepetidasConcursoAnterior.join(', ')} - <b>(${concurso.dezenasRepetidasConcursoAnterior.length})</b></td>
+            `;
+            tbody.appendChild(tr);
+          }
+         
+        });
+        let mediaOcAusAmb = (somaOcAusAmbTotal / concursos.length).toFixed(0);
+        let mediaMaisOcorrem = (somaCountMaisOcorremTotal / concursos.length).toFixed(0);
+        let mediaMaisAtrasadas = (somaCountMaisAtrasadasTotal / concursos.length).toFixed(0);
+        let mediaAmbas = (somaCountAmbasTotal / concursos.length).toFixed(0);
+        let mediaDezenasAusentes = (somaCountDezenasAusentes / concursos.length).toFixed(0);
+        let mediaDezenasNovasCA = (somaCountDezenasNovasCA / concursos.length).toFixed(0);
+        let mediaDezenasRepetidasCA = (somaCountDezenasRepetidasCA / concursos.length).toFixed(0);
+        const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td></td>
+            <td></td>
+            <td style='background-color:#eee; text-align:center'><b>Médias:</b></td>
+            <td style='text-align:center'><b>${mediaMaisOcorrem}</b> / <b>${mediaMaisAtrasadas}</b> / <b>${mediaAmbas}</b> - <b>(${mediaOcAusAmb})</b></td>
+            <td style='text-align:center'><b>${mediaDezenasAusentes}</b></td>
+            <td style='text-align:center'><b>${mediaDezenasNovasCA}</b></td>
+            <td style='text-align:center'><b>${mediaDezenasRepetidasCA}</b></td>
+          `;
+          tbody.appendChild(tr); 
+          
+        const tbodyEst = document.querySelector('#stats-table tbody');
+        const trEst = document.createElement('tr');
+        trEst.innerHTML = `
         <td>${estatisticas.maisSorteadas.map(item => '<b>' + item.dezena + ' </b> (' + item.ocorrencias + ')').join(', ')}</td>
         <td>${estatisticas.maisAusentes.map(item => '<b>' + item.dezena + ' </b> (' + item.concursosSemSair + ')').join(', ')}</td>        
-      `;
-      tbody.appendChild(tr);   
+        `;
+        tbodyEst.appendChild(trEst);
+      });     
   });
-  </script>
+  </script>  
 </body>
 </html>
