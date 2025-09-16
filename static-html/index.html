@@ -58,7 +58,17 @@
   </table>
   <script>
     const limitDataAnalysis = 50; // Alterar aqui o limite de concursos exibidos/ dados estatísticas
-    const limitConcursosDisplay = 50; // Alterar aqui o limite de concursos exibidos na tabela
+    const limitConcursosDisplay = 10; // Alterar aqui o limite de concursos exibidos na tabela
+    const ultimoConcursoDezenas = []; // Array para armazenar as dezenas do último concurso
+    const ultimoConcursoDezenasAusentes = []; // Array para armazenar as dezenas ausentes do último concursos
+    var estatisticas = {};
+    const TipoParametroDezenasConsolidado = Object.freeze({
+      OCORRENCIAS: 'MaisOcorrem',
+      AUSENCIAS: 'Ausentes',
+      AMBAS: 'MaisOcorremEAusentes',
+      REPETIDAS_CA: 'RepetidasCA',
+    });
+    const dadosConsolidadosDezenas = [];
     fetch('/concursos?limit=' + limitDataAnalysis)
       .then(res => res.json())
       .then(dataConcursos => {
@@ -72,7 +82,6 @@
         let somaCountAmbasTotal = 0;
         let firstConcurso = concursos[0];
         let concursoIndex = 0;
-        let estatisticas = {};
         const tbody = document.querySelector('#concursos-table tbody');
         let arrayCountsMaisOcorrem = [];
         let arrayCountsMaisAtrasadas = [];
@@ -98,6 +107,12 @@
 
               arrayCountsNovasCA.push(concurso.dezenasNovasConcursoAnterior.length);
               arrayCountsRepetidasCA.push(concurso.dezenasRepetidasConcursoAnterior.length);
+
+              if (concursoIndex === 1) {
+                // Armazena as dezenas do primeiro concurso (mais recente)
+                ultimoConcursoDezenas.push(...concurso.dezenas);
+                ultimoConcursoDezenasAusentes.push(...concurso.dezenasAusentes);
+              }
 
               // Renderiza cada dezena com cor de fundo se estiver em destaque
               const dezenasHtml = concurso.dezenas.map(dezena => {
@@ -160,13 +175,13 @@
               }
 
             });
-            let mediaOcAusAmb = (somaOcAusAmbTotal / concursos.length).toFixed(0);
-            let mediaMaisOcorrem = (somaCountMaisOcorremTotal / concursos.length).toFixed(0);
-            let mediaMaisAtrasadas = (somaCountMaisAtrasadasTotal / concursos.length).toFixed(0);
-            let mediaAmbas = (somaCountAmbasTotal / concursos.length).toFixed(0);
-            let mediaDezenasAusentes = (somaCountDezenasAusentes / concursos.length).toFixed(0);
-            let mediaDezenasNovasCA = (somaCountDezenasNovasCA / concursos.length).toFixed(0);
-            let mediaDezenasRepetidasCA = (somaCountDezenasRepetidasCA / concursos.length).toFixed(0);
+            let mediaOcAusAmb = Number((somaOcAusAmbTotal / concursos.length).toFixed(0));
+            let mediaMaisOcorrem = Number((somaCountMaisOcorremTotal / concursos.length).toFixed(0));
+            let mediaMaisAtrasadas = Number((somaCountMaisAtrasadasTotal / concursos.length).toFixed(0));
+            let mediaAmbas = Number((somaCountAmbasTotal / concursos.length).toFixed(0));
+            let mediaDezenasAusentes = Number((somaCountDezenasAusentes / concursos.length).toFixed(0));
+            let mediaDezenasNovasCA = Number((somaCountDezenasNovasCA / concursos.length).toFixed(0));
+            let mediaDezenasRepetidasCA = Number((somaCountDezenasRepetidasCA / concursos.length).toFixed(0));
 
             /**
              * Calcula a mediana de um array de números
@@ -218,7 +233,7 @@
               }
 
               return moda;
-            }
+            }            
 
             const trMedia = document.createElement('tr');
             trMedia.innerHTML = `
@@ -232,15 +247,26 @@
           `;
             tbody.appendChild(trMedia);
 
+            const minMaisOcorrem = Math.min(...arrayCountsMaisOcorrem);
+            const maxMaisOcorrem = Math.max(...arrayCountsMaisOcorrem);
+            const minMaisAtrasadas = Math.min(...arrayCountsMaisAtrasadas);
+            const maxMaisAtrasadas = Math.max(...arrayCountsMaisAtrasadas);
+            const minAmbas = Math.min(...arrayCountsAmbas);
+            const maxAmbas = Math.max(...arrayCountsAmbas);
+            const minNovasCA = Math.min(...arrayCountsNovasCA);
+            const maxNovasCA = Math.max(...arrayCountsNovasCA);
+            const minRepetidasCA = Math.min(...arrayCountsRepetidasCA);
+            const maxRepetidasCA = Math.max(...arrayCountsRepetidasCA);
+
             const trMin = document.createElement('tr');
             trMin.innerHTML = `
             <td></td>
             <td></td>
             <td style='background-color:#eee; text-align:center'><b>Mínimas:</b></td>
-            <td style='text-align:center'><b>${Math.min(...arrayCountsMaisOcorrem)}</b> / <b>${Math.min(...arrayCountsMaisAtrasadas)}</b> / <b>${Math.min(...arrayCountsAmbas)}</b></td>
+            <td style='text-align:center'><b>${minMaisOcorrem}</b> / <b>${minMaisAtrasadas}</b> / <b>${minAmbas}</b></td>
             <td style='text-align:center'></td>
-            <td style='text-align:center'><b>${Math.min(...arrayCountsNovasCA)}</b></td>
-            <td style='text-align:center'><b>${Math.min(...arrayCountsRepetidasCA)}</b></td>
+            <td style='text-align:center'><b>${minNovasCA}</b></td>
+            <td style='text-align:center'><b>${minRepetidasCA}</b></td>
           `;
             tbody.appendChild(trMin);
 
@@ -249,34 +275,46 @@
             <td></td>
             <td></td>
             <td style='background-color:#eee; text-align:center'><b>Máximas:</b></td>
-            <td style='text-align:center'><b>${Math.max(...arrayCountsMaisOcorrem)}</b> / <b>${Math.max(...arrayCountsMaisAtrasadas)}</b> / <b>${Math.max(...arrayCountsAmbas)}</b></td>
+            <td style='text-align:center'><b>${maxMaisOcorrem}</b> / <b>${maxMaisAtrasadas}</b> / <b>${maxAmbas}</b></td>
             <td style='text-align:center'></td>
-            <td style='text-align:center'><b>${Math.max(...arrayCountsNovasCA)}</b></td>
-            <td style='text-align:center'><b>${Math.max(...arrayCountsRepetidasCA)}</b></td>
+            <td style='text-align:center'><b>${maxNovasCA}</b></td>
+            <td style='text-align:center'><b>${maxRepetidasCA}</b></td>
           `;
             tbody.appendChild(trMax);
+
+            const medianaMaisOcorrem = calcularMediana(arrayCountsMaisOcorrem);
+            const medianaMaisAtrasadas = calcularMediana(arrayCountsMaisAtrasadas);
+            const medianaAmbas = calcularMediana(arrayCountsAmbas);
+            const medianaNovasCA = calcularMediana(arrayCountsNovasCA);
+            const medianaRepetidasCA = calcularMediana(arrayCountsRepetidasCA);
 
             const trMediana = document.createElement('tr');
             trMediana.innerHTML = `
             <td></td>
             <td></td>
             <td style='background-color:#eee; text-align:center'><b>Medianas:</b></td>
-            <td style='text-align:center'><b>${calcularMediana(arrayCountsMaisOcorrem)}</b> / <b>${calcularMediana(arrayCountsMaisAtrasadas)}</b> / <b>${calcularMediana(arrayCountsAmbas)}</b></td>
+            <td style='text-align:center'><b>${medianaMaisOcorrem}</b> / <b>${medianaMaisAtrasadas}</b> / <b>${medianaAmbas}</b></td>
             <td style='text-align:center'></td>
-            <td style='text-align:center'><b>${calcularMediana(arrayCountsNovasCA)}</b></td>
-            <td style='text-align:center'><b>${calcularMediana(arrayCountsRepetidasCA)}</b></td>
+            <td style='text-align:center'><b>${medianaNovasCA}</b></td>
+            <td style='text-align:center'><b>${medianaRepetidasCA}</b></td>
           `;
             tbody.appendChild(trMediana);
+
+            const modaMaisOcorrem = calcularModa(arrayCountsMaisOcorrem);
+            const modaMaisAtrasadas = calcularModa(arrayCountsMaisAtrasadas);
+            const modaAmbas = calcularModa(arrayCountsAmbas);
+            const modaNovasCA = calcularModa(arrayCountsNovasCA);
+            const modaRepetidasCA = calcularModa(arrayCountsRepetidasCA);
 
             const trModa = document.createElement('tr');
             trModa.innerHTML = `
             <td></td>
             <td></td>
             <td style='background-color:#eee; text-align:center'><b>Modas:</b></td>
-            <td style='text-align:center'><b>${calcularModa(arrayCountsMaisOcorrem)}</b> / <b>${calcularModa(arrayCountsMaisAtrasadas)}</b> / <b>${calcularModa(arrayCountsAmbas)}</b></td>
+            <td style='text-align:center'><b>${modaMaisOcorrem}</b> / <b>${modaMaisAtrasadas}</b> / <b>${modaAmbas}</b></td>
             <td style='text-align:center'></td>
-            <td style='text-align:center'><b>${calcularModa(arrayCountsNovasCA)}</b></td>
-            <td style='text-align:center'><b>${calcularModa(arrayCountsRepetidasCA)}</b></td>
+            <td style='text-align:center'><b>${modaNovasCA}</b></td>
+            <td style='text-align:center'><b>${modaRepetidasCA}</b></td>
           `;
             tbody.appendChild(trModa);
 
@@ -288,6 +326,177 @@
         <td>${estatisticas.maisAusentes.map(item => '<b>' + item.dezena + ' </b> (' + item.concursosSemSair + ')').join(', ')}</td>        
         `;
             tbodyEst.appendChild(trEst);
+
+            dadosConsolidadosDezenas.push({
+              tipoParametro: TipoParametroDezenasConsolidado.OCORRENCIAS,
+              media: mediaMaisOcorrem,
+              mediana: medianaMaisOcorrem,
+              moda: modaMaisOcorrem,
+              min: minMaisOcorrem,
+              max: maxMaisOcorrem
+            });
+            dadosConsolidadosDezenas.push({
+              tipoParametro: TipoParametroDezenasConsolidado.AUSENCIAS,
+              media: mediaMaisAtrasadas,
+              mediana: medianaMaisAtrasadas,
+              moda: modaMaisAtrasadas,
+              min: minMaisAtrasadas,
+              max: maxMaisAtrasadas
+            });
+            dadosConsolidadosDezenas.push({
+              tipoParametro: TipoParametroDezenasConsolidado.AMBAS,
+              media: mediaAmbas,
+              mediana: medianaAmbas,
+              moda: modaAmbas,
+              min: minAmbas,
+              max: maxAmbas
+            });
+            dadosConsolidadosDezenas.push({
+              tipoParametro: TipoParametroDezenasConsolidado.REPETIDAS_CA,
+              media: mediaDezenasRepetidasCA,
+              mediana: medianaRepetidasCA,
+              moda: modaRepetidasCA,
+              min: minRepetidasCA,
+              max: maxRepetidasCA
+            });           
+
+          /**
+           * Função utilitária para sortear dezenas aleatórias de um array, sem repetir
+           */
+          function sortearDezenas(array, qtd, dezenasJaEscolhidas = []) {
+            const disponiveis = array.filter(d => !dezenasJaEscolhidas.includes(d));
+            const resultado = [];
+            while (resultado.length < qtd && disponiveis.length > 0) {
+              const idx = Math.floor(Math.random() * disponiveis.length);
+              resultado.push(disponiveis[idx]);
+              disponiveis.splice(idx, 1);
+            }
+            return resultado;
+          }
+
+          /**
+           * Gera um concurso de acordo com os critérios estatísticos
+           */
+          function gerarConcurso(qtdDezenas, criterios, estatisticas, ultimoConcursoDezenas, ultimoConcursoDezenasAusentes) {
+            let dezenas = [];
+            let usadas = [];
+
+            // Repetidas CA
+            if (criterios.repetidasCA > 0 && ultimoConcursoDezenas.length > 0) {
+              const rep = sortearDezenas(ultimoConcursoDezenas, criterios.repetidasCA, usadas);
+              dezenas = dezenas.concat(rep);
+              usadas = usadas.concat(rep);
+            }
+
+            // Ambas (mais sorteadas e mais ausentes)
+            if (criterios.ambas > 0) {
+              const ambas = estatisticas.maisSorteadas
+                .filter(ms => estatisticas.maisAusentes.some(ma => ma.dezena === ms.dezena))
+                .map(ms => ms.dezena);
+              const ambasEscolhidas = sortearDezenas(ambas, criterios.ambas, usadas);
+              dezenas = dezenas.concat(ambasEscolhidas);
+              usadas = usadas.concat(ambasEscolhidas);
+            }
+
+            // Mais atrasadas
+            if (criterios.maisAtrasadas > 0) {
+              const atrasadas = estatisticas.maisAusentes.map(ma => ma.dezena);
+              const atrasadasEscolhidas = sortearDezenas(atrasadas, criterios.maisAtrasadas, usadas);
+              dezenas = dezenas.concat(atrasadasEscolhidas);
+              usadas = usadas.concat(atrasadasEscolhidas);
+            }
+
+            // Mais sorteadas
+            if (criterios.maisOcorrem > 0) {
+              const maisOcorrem = estatisticas.maisSorteadas.map(ms => ms.dezena);
+              const maisOcorremEscolhidas = sortearDezenas(maisOcorrem, criterios.maisOcorrem, usadas);
+              dezenas = dezenas.concat(maisOcorremEscolhidas);
+              usadas = usadas.concat(maisOcorremEscolhidas);
+            }
+
+            // Novas em relação ao último concurso
+            if (criterios.novasCA > 0 && ultimoConcursoDezenasAusentes.length > 0) {
+              const novas = sortearDezenas(ultimoConcursoDezenasAusentes, criterios.novasCA, usadas);
+              dezenas = dezenas.concat(novas);
+              usadas = usadas.concat(novas);
+            }
+
+            // Completa com dezenas aleatórias se faltar
+            if (dezenas.length < qtdDezenas) {
+              const todas = Array.from({ length: 25 }, (_, i) => i + 1);
+              const restantes = sortearDezenas(todas, qtdDezenas - dezenas.length, usadas);
+              dezenas = dezenas.concat(restantes);
+            }
+
+            // Garante que não há repetidas
+            dezenas = Array.from(new Set(dezenas)).slice(0, qtdDezenas);
+
+            return dezenas.sort((a, b) => a - b);
+          }
+
+          /**
+           * Gera e exibe a tabela de concursos simulados
+           */
+          function gerarTabelaConcursosSimulados(estatisticas, dadosConsolidadosDezenas, ultimoConcursoDezenas, ultimoConcursoDezenasAusentes) {
+            const criteriosList = [
+              { nome: 'Media', ...dadosConsolidadosDezenas.find(d => d.tipoParametro === TipoParametroDezenasConsolidado.OCORRENCIAS), maisOcorrem: Number(dadosConsolidadosDezenas.find(d => d.tipoParametro === TipoParametroDezenasConsolidado.OCORRENCIAS).media) },
+              { nome: 'Mediana', ...dadosConsolidadosDezenas.find(d => d.tipoParametro === TipoParametroDezenasConsolidado.OCORRENCIAS), maisOcorrem: Number(dadosConsolidadosDezenas.find(d => d.tipoParametro === TipoParametroDezenasConsolidado.OCORRENCIAS).mediana) },
+              { nome: 'Moda', ...dadosConsolidadosDezenas.find(d => d.tipoParametro === TipoParametroDezenasConsolidado.OCORRENCIAS), maisOcorrem: Number(dadosConsolidadosDezenas.find(d => d.tipoParametro === TipoParametroDezenasConsolidado.OCORRENCIAS).moda) },
+              { nome: 'Min', ...dadosConsolidadosDezenas.find(d => d.tipoParametro === TipoParametroDezenasConsolidado.OCORRENCIAS), maisOcorrem: Number(dadosConsolidadosDezenas.find(d => d.tipoParametro === TipoParametroDezenasConsolidado.OCORRENCIAS).min) },
+              { nome: 'Max', ...dadosConsolidadosDezenas.find(d => d.tipoParametro === TipoParametroDezenasConsolidado.OCORRENCIAS), maisOcorrem: Number(dadosConsolidadosDezenas.find(d => d.tipoParametro === TipoParametroDezenasConsolidado.OCORRENCIAS).max) },
+            ];
+
+            // Ajuste para os demais critérios
+            criteriosList.forEach(criterio => {
+              criterio.maisAtrasadas = Number(dadosConsolidadosDezenas.find(d => d.tipoParametro === TipoParametroDezenasConsolidado.AUSENCIAS)[criterio.nome.toLowerCase()]);
+              criterio.ambas = Number(dadosConsolidadosDezenas.find(d => d.tipoParametro === TipoParametroDezenasConsolidado.AMBAS)[criterio.nome.toLowerCase()]);
+              criterio.repetidasCA = Number(dadosConsolidadosDezenas.find(d => d.tipoParametro === TipoParametroDezenasConsolidado.REPETIDAS_CA)[criterio.nome.toLowerCase()]);
+              criterio.novasCA = 0; // Ajuste se quiser usar dezenas novas do último concurso
+            });
+
+            const qtdDezenas = 15; // ou outro valor conforme parâmetro
+            const tabela = document.createElement('table');
+            tabela.style.marginTop = '2em';
+            tabela.innerHTML = `
+              <thead>
+                <tr>
+                  <th>Critério</th>
+                  <th>Dezenas Geradas</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            `;
+            const tbody = tabela.querySelector('tbody');
+
+            criteriosList.forEach(criterio => {
+              const dezenas = gerarConcurso(qtdDezenas, criterio, estatisticas, ultimoConcursoDezenas, ultimoConcursoDezenasAusentes);
+                const dezenasHtml = dezenas.map(d => {
+                const isMaisSorteada = estatisticas.maisSorteadas.map(ms => ms.dezena).includes(d);
+                const isMaisAusente = estatisticas.maisAusentes.map(ma => ma.dezena).includes(d);
+                const isRepetidaCA = ultimoConcursoDezenas.includes(d);
+                let backColor = 'none';
+                if (isMaisSorteada && isMaisAusente) {
+                  backColor = 'thistle';
+                } else if (isMaisSorteada) {
+                  backColor = 'mediumseagreen';
+                } else if (isMaisAusente) {
+                  backColor = '#f2f28a';
+                }
+                const borderStyle = isRepetidaCA ? 'border:3px solid #888;' : '';
+                return `<span style="background:${backColor};padding:2px 6px;border-radius:4px;${borderStyle}">${d}</span>`;
+                }).join(', ');
+              const tr = document.createElement('tr');
+              tr.innerHTML = `<td>${criterio.nome}</td><td>${dezenasHtml}</td>`;
+              tbody.appendChild(tr);
+            });
+
+            document.body.appendChild(tabela);
+          }
+
+          // Chame a função após o carregamento dos dados consolidados e estatísticas
+          // Exemplo (coloque após o processamento dos dados no seu script):
+          gerarTabelaConcursosSimulados(estatisticas, dadosConsolidadosDezenas, ultimoConcursoDezenas, ultimoConcursoDezenasAusentes);
+
           });
       });
   </script>
