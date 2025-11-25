@@ -48,6 +48,7 @@
         <th>Data</th>
         <th>Dezenas</th>
         <th>Oc. / Aus. / Amb.</th>
+        <th>Pad. Alt</th>
         <th>Dezenas Ausentes</th>
         <th>Dezenas Novas C. Anterior</th>
         <th>Dezenas Repetidas C. Anterior</th>
@@ -57,6 +58,42 @@
     <tbody></tbody>
   </table>
   <script>
+    function obterPadraoAlternanciaFormatado(dezenas) {
+      let countPadraoAlternancia2 = 0;
+      let countPadraoAlternancia3 = 0;
+      let countPadraoAlternancia4 = 0;
+      let padrao = '';
+      for (let i = 0; i < dezenas.length - 2; i++) {
+        let diff = dezenas[i + 1] - dezenas[i];
+        if (diff == 3) {
+          countPadraoAlternancia2++;
+        }
+        else if (diff == 4) {
+          countPadraoAlternancia3++;
+        }
+        else if (diff == 5) { 
+          countPadraoAlternancia4++;
+        }
+      }
+      if (countPadraoAlternancia2 > 0) {
+        padrao += `<b>2</b> [${countPadraoAlternancia2}]`;
+      }
+      if (countPadraoAlternancia3 > 0) {
+        if (padrao.length > 0) {
+          padrao += ', ';
+        }
+        padrao += `<b>3</b> [${countPadraoAlternancia3}]`;
+      }
+      if (countPadraoAlternancia4 > 0) {
+        if (padrao.length > 0) {
+          padrao += ', ';
+        }
+        padrao += `<b>4</b> [${countPadraoAlternancia4}]`;
+      }
+
+      return padrao;      
+    }
+
     const limitDataAnalysis = 50; // Alterar aqui o limite de concursos exibidos/ dados estatísticas
     const limitConcursosDisplay = 10; // Alterar aqui o limite de concursos exibidos na tabela
     const ultimoConcursoDezenas = []; // Array para armazenar as dezenas do último concurso
@@ -88,6 +125,7 @@
         let arrayCountsAmbas = [];
         let arrayCountsRepetidasCA = [];
         let arrayCountsNovasCA = [];
+        let mapModasCombinada = new Map();
         fetch('/stats?limit=' + limitDataAnalysis)
           .then(res => res.json())
           .then(data => {
@@ -141,6 +179,9 @@
               arrayCountsMaisAtrasadas.push(countMaisAtrasadas);
               arrayCountsMaisOcorrem.push(countMaisOcorrem);
 
+              modaCombinadaKey = countMaisOcorrem + ' / ' + countMaisAtrasadas + " / " + countAmbas;
+              mapModasCombinada.set(modaCombinadaKey, (mapModasCombinada.get(modaCombinadaKey) || 0) + 1);
+
               let dezenasAusentesHtml = null;
               if (concurso.numero === firstConcurso.numero) {
                 // Renderiza cada dezena ausente com cor de fundo se estiver em destaque
@@ -164,9 +205,10 @@
                 const tr = document.createElement('tr');
                 tr.innerHTML = `            
             <td>${concurso.numero}</td>
-            <td>${concurso.data.substring(0,10)}</td>
+            <td>${concurso.data.substring(0,10)}</td>             
             <td>${dezenasHtml}</td>
             <td>${countMaisOcorrem} / ${countMaisAtrasadas} / ${countAmbas} - <b>(${somaOcAusAmb})</b></td>
+            <td>${obterPadraoAlternanciaFormatado(concurso.dezenas)}</td>
             <td>${dezenasAusentesHtml ? dezenasAusentesHtml : concurso.dezenasAusentes.join(', ')}</td>
             <td>${concurso.dezenasNovasConcursoAnterior.join(', ')} - <b>(${concurso.dezenasNovasConcursoAnterior.length})</b></td>
             <td>${concurso.dezenasRepetidasConcursoAnterior.join(', ')} - <b>(${concurso.dezenasRepetidasConcursoAnterior.length})</b></td>
@@ -241,6 +283,7 @@
             <td></td>
             <td style='background-color:#eee; text-align:center'><b>Médias:</b></td>
             <td style='text-align:center'><b>${mediaMaisOcorrem}</b> / <b>${mediaMaisAtrasadas}</b> / <b>${mediaAmbas}</b> - <b>(${mediaOcAusAmb})</b></td>
+            <td></td>
             <td style='text-align:center'><b>${mediaDezenasAusentes}</b></td>
             <td style='text-align:center'><b>${mediaDezenasNovasCA}</b></td>
             <td style='text-align:center'><b>${mediaDezenasRepetidasCA}</b></td>
@@ -265,6 +308,7 @@
             <td style='background-color:#eee; text-align:center'><b>Mínimas:</b></td>
             <td style='text-align:center'><b>${minMaisOcorrem}</b> / <b>${minMaisAtrasadas}</b> / <b>${minAmbas}</b></td>
             <td style='text-align:center'></td>
+            <td style='text-align:center'></td>
             <td style='text-align:center'><b>${minNovasCA}</b></td>
             <td style='text-align:center'><b>${minRepetidasCA}</b></td>
           `;
@@ -276,6 +320,7 @@
             <td></td>
             <td style='background-color:#eee; text-align:center'><b>Máximas:</b></td>
             <td style='text-align:center'><b>${maxMaisOcorrem}</b> / <b>${maxMaisAtrasadas}</b> / <b>${maxAmbas}</b></td>
+            <td style='text-align:center'></td>
             <td style='text-align:center'></td>
             <td style='text-align:center'><b>${maxNovasCA}</b></td>
             <td style='text-align:center'><b>${maxRepetidasCA}</b></td>
@@ -295,6 +340,7 @@
             <td style='background-color:#eee; text-align:center'><b>Medianas:</b></td>
             <td style='text-align:center'><b>${medianaMaisOcorrem}</b> / <b>${medianaMaisAtrasadas}</b> / <b>${medianaAmbas}</b></td>
             <td style='text-align:center'></td>
+            <td style='text-align:center'></td>
             <td style='text-align:center'><b>${medianaNovasCA}</b></td>
             <td style='text-align:center'><b>${medianaRepetidasCA}</b></td>
           `;
@@ -305,6 +351,7 @@
             const modaAmbas = calcularModa(arrayCountsAmbas);
             const modaNovasCA = calcularModa(arrayCountsNovasCA);
             const modaRepetidasCA = calcularModa(arrayCountsRepetidasCA);
+            
 
             const trModa = document.createElement('tr');
             trModa.innerHTML = `
@@ -313,10 +360,26 @@
             <td style='background-color:#eee; text-align:center'><b>Modas:</b></td>
             <td style='text-align:center'><b>${modaMaisOcorrem}</b> / <b>${modaMaisAtrasadas}</b> / <b>${modaAmbas}</b></td>
             <td style='text-align:center'></td>
+            <td style='text-align:center'></td>
             <td style='text-align:center'><b>${modaNovasCA}</b></td>
             <td style='text-align:center'><b>${modaRepetidasCA}</b></td>
           `;
             tbody.appendChild(trModa);
+
+            const modasCombinadasMaisOcorreOrdenadasDesc = Array.from(mapModasCombinada.entries()).sort((a, b) => b[1] - a[1]);
+            const trModaCombinada = document.createElement('tr');
+            trModaCombinada.innerHTML = `
+            <td></td>
+            <td></td>
+            <td style='background-color:#eee; text-align:center'><b>Moda Combinada:</b></td>
+            <td style='text-align:center'><b>${modasCombinadasMaisOcorreOrdenadasDesc[0][0]} - (${modasCombinadasMaisOcorreOrdenadasDesc[0][1]})<br></b>
+              <b>${modasCombinadasMaisOcorreOrdenadasDesc[1][0]} - (${modasCombinadasMaisOcorreOrdenadasDesc[1][1]})<br></b>
+              <b>${modasCombinadasMaisOcorreOrdenadasDesc[2][0]} - (${modasCombinadasMaisOcorreOrdenadasDesc[2][1]})</b></td>
+            <td style='text-align:center'></td>
+            <td style='text-align:center'></td>
+            <td style='text-align:center'></td>
+          `;
+            tbody.appendChild(trModaCombinada);
 
             // Estatísticas gerais
             const tbodyEst = document.querySelector('#stats-table tbody');
