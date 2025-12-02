@@ -48,7 +48,7 @@
         <th>Data</th>
         <th>Dezenas</th>
         <th>Oc. / Aus. / Amb.</th>
-        <th>Pad. Alt</th>
+        <th>Padrão Altern.</th>
         <th>Dezenas Ausentes</th>
         <th>Dezenas Novas C. Anterior</th>
         <th>Dezenas Repetidas C. Anterior</th>
@@ -525,6 +525,7 @@
                 <tr>
                   <th>Critério</th>
                   <th>Dezenas Geradas</th>
+                  <th>Padrão Altern.</th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -549,7 +550,7 @@
                 return `<span style="background:${backColor};padding:2px 6px;border-radius:4px;${borderStyle}">${d}</span>`;
                 }).join(', ');
               const tr = document.createElement('tr');
-              tr.innerHTML = `<td>${criterio.nome}</td><td>${dezenasHtml}</td>`;
+              tr.innerHTML = `<td>${criterio.nome}</td><td>${dezenasHtml}</td><td>${obterPadraoAlternanciaFormatado(dezenas)}</td>`;
               tbody.appendChild(tr);
             });
 

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import * as fs from 'fs/promises';
 import * as XLSX from 'xlsx';
 import { LotofacilDataProvider } from '@domain/ports/LotofacilDataProvider';
 import { Concurso } from '@/domain/entities/Concurso';
@@ -17,6 +18,17 @@ export class CaixaDataProvider implements LotofacilDataProvider {
     this.filePath = envFilePath;
   }
 
+  private async saveBufferAsFile(filePath: string, dataBuffer: Buffer): Promise<void> {
+    try {
+      // O método fs.writeFile aceita um Buffer diretamente como dado
+      await fs.writeFile(filePath, dataBuffer);
+      console.log('Buffer salvo como arquivo com sucesso!');
+    } catch (error) {
+      console.error('Erro ao salvar o arquivo:', error);
+      throw error;
+    }
+  }
+
   async downloadHistoricalData(): Promise<Concurso[]> {
     try {
       const response = await axios.get(this.url, {
@@ -31,7 +43,10 @@ export class CaixaDataProvider implements LotofacilDataProvider {
         throw new Error(`Falha ao baixar dados: Status ${response.status}`);
       }
 
-      return await this.processLotofacilData(Buffer.from(response.data));
+      const bFile = Buffer.from(response.data);
+      await this.saveBufferAsFile(this.filePath, bFile);
+
+      return await this.processLotofacilData(bFile);
     } catch (error) {
       if (error instanceof Error) {
         throw new Error(`Erro ao baixar dados da Caixa: ${error.message}`);
@@ -42,8 +57,17 @@ export class CaixaDataProvider implements LotofacilDataProvider {
 
   private async processLotofacilData(buffer: Buffer): Promise<Concurso[]> {
     try {
-      // const workbook = XLSX.read(buffer, { type: 'buffer' });      
-      const workbook = XLSX.readFile(this.filePath);
+      let workbook = null;
+      workbook = XLSX.readFile(this.filePath);
+
+      let sheetRef = '';
+      const firstSheetName = workbook.SheetNames[0];
+      if (firstSheetName) {
+        if (workbook != null && workbook.Sheets != null) {
+          sheetRef = workbook.Sheets[firstSheetName]?.['!ref'] || '';
+        }
+      }
+
       const sheetName = workbook.SheetNames[0];
 
       if (!sheetName) {
@@ -51,8 +75,15 @@ export class CaixaDataProvider implements LotofacilDataProvider {
       }
 
       const sheet = workbook.Sheets[sheetName];
+
       if (!sheet) {
         throw new Error('Não foi possível acessar a primeira aba da planilha');
+      }
+
+      // workaround para forçar leitura de mais linhas caso a referência esteja limitada
+      // TODO melhorar essa parte (está limitada a 10.000 linhas por enquanto)
+      if (sheetRef === "A1:AG1") {
+        sheet["!ref"] = "A1:AG10000";
       }
 
       const jsonData: any[][] = XLSX.utils.sheet_to_json(sheet, {
