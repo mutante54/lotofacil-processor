@@ -11,7 +11,7 @@ export class ProcessLotofacilData {
   constructor(
     private readonly concursoRepository: ConcursoRepository,
     private readonly dataProvider: LotofacilDataProvider
-  ) { }
+  ) { }  
 
   async execute(): Promise<{
     totalProcessed: number;

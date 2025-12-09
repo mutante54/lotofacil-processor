@@ -34,44 +34,52 @@
     <thead>
       <tr>
         <th style="background-color: mediumseagreen;">Dezenas que mais ocorrem</th>
+        <th style="background-color: #acc5ab">Dez. Maior Sequência - Ocorrências <i>(min = 3)</i></th>
         <th style="background-color: #f2f28a">Dezenas mais ausentes</th>
+        <th style="background-color: #e7e6a9">Dez. Maior Sequência - Ausente <i>(min = 3)</i></th>
       </tr>
     </thead>
     <tbody></tbody>
   </table>
-  <h1>Concursos Lotofácil</h1><span>[limitDataAnalysis=50] [limitDisplay=10]</span>
+  <h1>Concursos Lotofácil</h1><span id="limits-display"></span>
   <br /><br />
-  <table id="concursos-table">
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Data</th>
-        <th>Dezenas</th>
-        <th>Oc. / Aus. / Amb.</th>
-        <th>Padrão Altern.</th>
-        <th>Dezenas Ausentes</th>
-        <th>Dezenas Novas C. Anterior</th>
-        <th>Dezenas Repetidas C. Anterior</th>
-        <!-- Adicione mais colunas conforme necessário -->
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+  <div style="max-height: 400px; overflow-y: auto;">
+    <table id="concursos-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Data</th>
+          <th>Dezenas</th>
+          <th>Oc. / Aus. / Amb.</th>
+          <th>Padrão Altern.</th>
+          <th>Dezenas Ausentes</th>
+          <th>Dezenas Novas C. Anterior</th>
+          <th>Dezenas Repetidas C. Anterior</th>
+          <!-- Adicione mais colunas conforme necessário -->
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
   <script>
     function obterPadraoAlternanciaFormatado(dezenas) {
       let countPadraoAlternancia2 = 0;
       let countPadraoAlternancia3 = 0;
       let countPadraoAlternancia4 = 0;
       let padrao = '';
-      for (let i = 0; i < dezenas.length - 2; i++) {
-        let diff = dezenas[i + 1] - dezenas[i];
+      for (let i = 0; i < dezenas.length; i++) {
+        const current = dezenas[i];
+        // pega a próxima dezena ou 26 se for a última (25 é o maior número possível + 1 para base de calculo)
+        const next = i < (dezenas.length - 1) ? dezenas[i + 1] : 26;
+        if (current === undefined || next === undefined) {
+          continue;
+        }
+        let diff = next - current;
         if (diff == 3) {
           countPadraoAlternancia2++;
-        }
-        else if (diff == 4) {
+        } else if (diff == 4) {
           countPadraoAlternancia3++;
-        }
-        else if (diff == 5) { 
+        } else if (diff == 5) {
           countPadraoAlternancia4++;
         }
       }
@@ -91,11 +99,11 @@
         padrao += `<b>4</b> [${countPadraoAlternancia4}]`;
       }
 
-      return padrao;      
+      return padrao;
     }
 
     const limitDataAnalysis = 50; // Alterar aqui o limite de concursos exibidos/ dados estatísticas
-    const limitConcursosDisplay = 10; // Alterar aqui o limite de concursos exibidos na tabela
+    const limitConcursosDisplay = 50; // Alterar aqui o limite de concursos exibidos na tabela    
     const ultimoConcursoDezenas = []; // Array para armazenar as dezenas do último concurso
     const ultimoConcursoDezenasAusentes = []; // Array para armazenar as dezenas ausentes do último concursos
     var estatisticas = {};
@@ -106,6 +114,11 @@
       REPETIDAS_CA: 'RepetidasCA',
     });
     const dadosConsolidadosDezenas = [];
+
+    limitsDisplay = document.getElementById('limits-display');
+    limitsDisplay.innerHTML =
+      `<i>(Exibindo os últimos <u>${limitConcursosDisplay}</u> concursos de um total de <u>${limitDataAnalysis}</u> analisados</i>)`;
+
     fetch('/concursos?limit=' + limitDataAnalysis)
       .then(res => res.json())
       .then(dataConcursos => {
@@ -208,7 +221,7 @@
             <td>${concurso.data.substring(0,10)}</td>             
             <td>${dezenasHtml}</td>
             <td>${countMaisOcorrem} / ${countMaisAtrasadas} / ${countAmbas} - <b>(${somaOcAusAmb})</b></td>
-            <td>${obterPadraoAlternanciaFormatado(concurso.dezenas)}</td>
+            <td>${concurso.padraoAlternancia ? Object.entries(concurso.padraoAlternancia).map(([key, value]) => `<b>${key}</b> [${value}]`).join(', ') : ''}</td>
             <td>${dezenasAusentesHtml ? dezenasAusentesHtml : concurso.dezenasAusentes.join(', ')}</td>
             <td>${concurso.dezenasNovasConcursoAnterior.join(', ')} - <b>(${concurso.dezenasNovasConcursoAnterior.length})</b></td>
             <td>${concurso.dezenasRepetidasConcursoAnterior.join(', ')} - <b>(${concurso.dezenasRepetidasConcursoAnterior.length})</b></td>
@@ -275,7 +288,7 @@
               }
 
               return moda;
-            }            
+            }
 
             const trMedia = document.createElement('tr');
             trMedia.innerHTML = `
@@ -351,7 +364,7 @@
             const modaAmbas = calcularModa(arrayCountsAmbas);
             const modaNovasCA = calcularModa(arrayCountsNovasCA);
             const modaRepetidasCA = calcularModa(arrayCountsRepetidasCA);
-            
+
 
             const trModa = document.createElement('tr');
             trModa.innerHTML = `
@@ -366,7 +379,8 @@
           `;
             tbody.appendChild(trModa);
 
-            const modasCombinadasMaisOcorreOrdenadasDesc = Array.from(mapModasCombinada.entries()).sort((a, b) => b[1] - a[1]);
+            const modasCombinadasMaisOcorreOrdenadasDesc = Array.from(mapModasCombinada.entries()).sort((a, b) => b[
+              1] - a[1]);
             const trModaCombinada = document.createElement('tr');
             trModaCombinada.innerHTML = `
             <td></td>
@@ -386,7 +400,9 @@
             const trEst = document.createElement('tr');
             trEst.innerHTML = `
         <td>${estatisticas.maisSorteadas.map(item => '<b>' + item.dezena + ' </b> (' + item.ocorrencias + ')').join(', ')}</td>
-        <td>${estatisticas.maisAusentes.map(item => '<b>' + item.dezena + ' </b> (' + item.concursosSemSair + ')').join(', ')}</td>        
+        <td>${estatisticas.maioresSequencias.map(item => '<b>' + item.dezena + ' </b> (' + item.sequencia + ')').join(', ')}</td> 
+        <td>${estatisticas.maisAusentes.map(item => '<b>' + item.dezena + ' </b> (' + item.concursosSemSair + ')').join(', ')}</td>
+        <td>${estatisticas.maioresSequenciasAusente.map(item => '<b>' + item.dezena + ' </b> (' + item.sequencia + ')').join(', ')}</td> 
         `;
             tbodyEst.appendChild(trEst);
 
@@ -421,106 +437,142 @@
               moda: modaRepetidasCA,
               min: minRepetidasCA,
               max: maxRepetidasCA
-            });           
-
-          /**
-           * Função utilitária para sortear dezenas aleatórias de um array, sem repetir
-           */
-          function sortearDezenas(array, qtd, dezenasJaEscolhidas = []) {
-            const disponiveis = array.filter(d => !dezenasJaEscolhidas.includes(d));
-            const resultado = [];
-            while (resultado.length < qtd && disponiveis.length > 0) {
-              const idx = Math.floor(Math.random() * disponiveis.length);
-              resultado.push(disponiveis[idx]);
-              disponiveis.splice(idx, 1);
-            }
-            return resultado;
-          }
-
-          /**
-           * Gera um concurso de acordo com os critérios estatísticos
-           */
-          function gerarConcurso(qtdDezenas, criterios, estatisticas, ultimoConcursoDezenas, ultimoConcursoDezenasAusentes) {
-            let dezenas = [];
-            let usadas = [];
-
-            // Repetidas CA
-            if (criterios.repetidasCA > 0 && ultimoConcursoDezenas.length > 0) {
-              const rep = sortearDezenas(ultimoConcursoDezenas, criterios.repetidasCA, usadas);
-              dezenas = dezenas.concat(rep);
-              usadas = usadas.concat(rep);
-            }
-
-            // Ambas (mais sorteadas e mais ausentes)
-            if (criterios.ambas > 0) {
-              const ambas = estatisticas.maisSorteadas
-                .filter(ms => estatisticas.maisAusentes.some(ma => ma.dezena === ms.dezena))
-                .map(ms => ms.dezena);
-              const ambasEscolhidas = sortearDezenas(ambas, criterios.ambas, usadas);
-              dezenas = dezenas.concat(ambasEscolhidas);
-              usadas = usadas.concat(ambasEscolhidas);
-            }
-
-            // Mais atrasadas
-            if (criterios.maisAtrasadas > 0) {
-              const atrasadas = estatisticas.maisAusentes.map(ma => ma.dezena);
-              const atrasadasEscolhidas = sortearDezenas(atrasadas, criterios.maisAtrasadas, usadas);
-              dezenas = dezenas.concat(atrasadasEscolhidas);
-              usadas = usadas.concat(atrasadasEscolhidas);
-            }
-
-            // Mais sorteadas
-            if (criterios.maisOcorrem > 0) {
-              const maisOcorrem = estatisticas.maisSorteadas.map(ms => ms.dezena);
-              const maisOcorremEscolhidas = sortearDezenas(maisOcorrem, criterios.maisOcorrem, usadas);
-              dezenas = dezenas.concat(maisOcorremEscolhidas);
-              usadas = usadas.concat(maisOcorremEscolhidas);
-            }
-
-            // Novas em relação ao último concurso
-            if (criterios.novasCA > 0 && ultimoConcursoDezenasAusentes.length > 0) {
-              const novas = sortearDezenas(ultimoConcursoDezenasAusentes, criterios.novasCA, usadas);
-              dezenas = dezenas.concat(novas);
-              usadas = usadas.concat(novas);
-            }
-
-            // Completa com dezenas aleatórias se faltar
-            if (dezenas.length < qtdDezenas) {
-              const todas = Array.from({ length: 25 }, (_, i) => i + 1);
-              const restantes = sortearDezenas(todas, qtdDezenas - dezenas.length, usadas);
-              dezenas = dezenas.concat(restantes);
-            }
-
-            // Garante que não há repetidas
-            dezenas = Array.from(new Set(dezenas)).slice(0, qtdDezenas);
-
-            return dezenas.sort((a, b) => a - b);
-          }
-
-          /**
-           * Gera e exibe a tabela de concursos simulados
-           */
-          function gerarTabelaConcursosSimulados(estatisticas, dadosConsolidadosDezenas, ultimoConcursoDezenas, ultimoConcursoDezenasAusentes) {
-            const criteriosList = [
-              { nome: 'Media', ...dadosConsolidadosDezenas.find(d => d.tipoParametro === TipoParametroDezenasConsolidado.OCORRENCIAS), maisOcorrem: Number(dadosConsolidadosDezenas.find(d => d.tipoParametro === TipoParametroDezenasConsolidado.OCORRENCIAS).media) },
-              { nome: 'Mediana', ...dadosConsolidadosDezenas.find(d => d.tipoParametro === TipoParametroDezenasConsolidado.OCORRENCIAS), maisOcorrem: Number(dadosConsolidadosDezenas.find(d => d.tipoParametro === TipoParametroDezenasConsolidado.OCORRENCIAS).mediana) },
-              { nome: 'Moda', ...dadosConsolidadosDezenas.find(d => d.tipoParametro === TipoParametroDezenasConsolidado.OCORRENCIAS), maisOcorrem: Number(dadosConsolidadosDezenas.find(d => d.tipoParametro === TipoParametroDezenasConsolidado.OCORRENCIAS).moda) },
-              { nome: 'Min', ...dadosConsolidadosDezenas.find(d => d.tipoParametro === TipoParametroDezenasConsolidado.OCORRENCIAS), maisOcorrem: Number(dadosConsolidadosDezenas.find(d => d.tipoParametro === TipoParametroDezenasConsolidado.OCORRENCIAS).min) },
-              { nome: 'Max', ...dadosConsolidadosDezenas.find(d => d.tipoParametro === TipoParametroDezenasConsolidado.OCORRENCIAS), maisOcorrem: Number(dadosConsolidadosDezenas.find(d => d.tipoParametro === TipoParametroDezenasConsolidado.OCORRENCIAS).max) },
-            ];
-
-            // Ajuste para os demais critérios
-            criteriosList.forEach(criterio => {
-              criterio.maisAtrasadas = Number(dadosConsolidadosDezenas.find(d => d.tipoParametro === TipoParametroDezenasConsolidado.AUSENCIAS)[criterio.nome.toLowerCase()]);
-              criterio.ambas = Number(dadosConsolidadosDezenas.find(d => d.tipoParametro === TipoParametroDezenasConsolidado.AMBAS)[criterio.nome.toLowerCase()]);
-              criterio.repetidasCA = Number(dadosConsolidadosDezenas.find(d => d.tipoParametro === TipoParametroDezenasConsolidado.REPETIDAS_CA)[criterio.nome.toLowerCase()]);
-              criterio.novasCA = 0; // Ajuste se quiser usar dezenas novas do último concurso
             });
 
-            const qtdDezenas = 15; // ou outro valor conforme parâmetro
-            const tabela = document.createElement('table');
-            tabela.style.marginTop = '2em';
-            tabela.innerHTML = `
+            /**
+             * Função utilitária para sortear dezenas aleatórias de um array, sem repetir
+             */
+            function sortearDezenas(array, qtd, dezenasJaEscolhidas = []) {
+              const disponiveis = array.filter(d => !dezenasJaEscolhidas.includes(d));
+              const resultado = [];
+              while (resultado.length < qtd && disponiveis.length > 0) {
+                const idx = Math.floor(Math.random() * disponiveis.length);
+                resultado.push(disponiveis[idx]);
+                disponiveis.splice(idx, 1);
+              }
+              return resultado;
+            }
+
+            /**
+             * Gera um concurso de acordo com os critérios estatísticos
+             */
+            function gerarConcurso(qtdDezenas, criterios, estatisticas, ultimoConcursoDezenas,
+              ultimoConcursoDezenasAusentes) {
+              let dezenas = [];
+              let usadas = [];
+
+              // Repetidas CA
+              if (criterios.repetidasCA > 0 && ultimoConcursoDezenas.length > 0) {
+                const rep = sortearDezenas(ultimoConcursoDezenas, criterios.repetidasCA, usadas);
+                dezenas = dezenas.concat(rep);
+                usadas = usadas.concat(rep);
+              }
+
+              // Ambas (mais sorteadas e mais ausentes)
+              if (criterios.ambas > 0) {
+                const ambas = estatisticas.maisSorteadas
+                  .filter(ms => estatisticas.maisAusentes.some(ma => ma.dezena === ms.dezena))
+                  .map(ms => ms.dezena);
+                const ambasEscolhidas = sortearDezenas(ambas, criterios.ambas, usadas);
+                dezenas = dezenas.concat(ambasEscolhidas);
+                usadas = usadas.concat(ambasEscolhidas);
+              }
+
+              // Mais atrasadas
+              if (criterios.maisAtrasadas > 0) {
+                const atrasadas = estatisticas.maisAusentes.map(ma => ma.dezena);
+                const atrasadasEscolhidas = sortearDezenas(atrasadas, criterios.maisAtrasadas, usadas);
+                dezenas = dezenas.concat(atrasadasEscolhidas);
+                usadas = usadas.concat(atrasadasEscolhidas);
+              }
+
+              // Mais sorteadas
+              if (criterios.maisOcorrem > 0) {
+                const maisOcorrem = estatisticas.maisSorteadas.map(ms => ms.dezena);
+                const maisOcorremEscolhidas = sortearDezenas(maisOcorrem, criterios.maisOcorrem, usadas);
+                dezenas = dezenas.concat(maisOcorremEscolhidas);
+                usadas = usadas.concat(maisOcorremEscolhidas);
+              }
+
+              // Novas em relação ao último concurso
+              if (criterios.novasCA > 0 && ultimoConcursoDezenasAusentes.length > 0) {
+                const novas = sortearDezenas(ultimoConcursoDezenasAusentes, criterios.novasCA, usadas);
+                dezenas = dezenas.concat(novas);
+                usadas = usadas.concat(novas);
+              }
+
+              // Completa com dezenas aleatórias se faltar
+              if (dezenas.length < qtdDezenas) {
+                const todas = Array.from({
+                  length: 25
+                }, (_, i) => i + 1);
+                const restantes = sortearDezenas(todas, qtdDezenas - dezenas.length, usadas);
+                dezenas = dezenas.concat(restantes);
+              }
+
+              // Garante que não há repetidas
+              dezenas = Array.from(new Set(dezenas)).slice(0, qtdDezenas);
+
+              return dezenas.sort((a, b) => a - b);
+            }
+
+            /**
+             * Gera e exibe a tabela de concursos simulados
+             */
+            function gerarTabelaConcursosSimulados(estatisticas, dadosConsolidadosDezenas, ultimoConcursoDezenas,
+              ultimoConcursoDezenasAusentes) {
+              const criteriosList = [{
+                  nome: 'Media',
+                  ...dadosConsolidadosDezenas.find(d => d.tipoParametro === TipoParametroDezenasConsolidado
+                    .OCORRENCIAS),
+                  maisOcorrem: Number(dadosConsolidadosDezenas.find(d => d.tipoParametro ===
+                    TipoParametroDezenasConsolidado.OCORRENCIAS).media)
+                },
+                {
+                  nome: 'Mediana',
+                  ...dadosConsolidadosDezenas.find(d => d.tipoParametro === TipoParametroDezenasConsolidado
+                    .OCORRENCIAS),
+                  maisOcorrem: Number(dadosConsolidadosDezenas.find(d => d.tipoParametro ===
+                    TipoParametroDezenasConsolidado.OCORRENCIAS).mediana)
+                },
+                {
+                  nome: 'Moda',
+                  ...dadosConsolidadosDezenas.find(d => d.tipoParametro === TipoParametroDezenasConsolidado
+                    .OCORRENCIAS),
+                  maisOcorrem: Number(dadosConsolidadosDezenas.find(d => d.tipoParametro ===
+                    TipoParametroDezenasConsolidado.OCORRENCIAS).moda)
+                },
+                {
+                  nome: 'Min',
+                  ...dadosConsolidadosDezenas.find(d => d.tipoParametro === TipoParametroDezenasConsolidado
+                    .OCORRENCIAS),
+                  maisOcorrem: Number(dadosConsolidadosDezenas.find(d => d.tipoParametro ===
+                    TipoParametroDezenasConsolidado.OCORRENCIAS).min)
+                },
+                {
+                  nome: 'Max',
+                  ...dadosConsolidadosDezenas.find(d => d.tipoParametro === TipoParametroDezenasConsolidado
+                    .OCORRENCIAS),
+                  maisOcorrem: Number(dadosConsolidadosDezenas.find(d => d.tipoParametro ===
+                    TipoParametroDezenasConsolidado.OCORRENCIAS).max)
+                },
+              ];
+
+              // Ajuste para os demais critérios
+              criteriosList.forEach(criterio => {
+                criterio.maisAtrasadas = Number(dadosConsolidadosDezenas.find(d => d.tipoParametro ===
+                  TipoParametroDezenasConsolidado.AUSENCIAS)[criterio.nome.toLowerCase()]);
+                criterio.ambas = Number(dadosConsolidadosDezenas.find(d => d.tipoParametro ===
+                  TipoParametroDezenasConsolidado.AMBAS)[criterio.nome.toLowerCase()]);
+                criterio.repetidasCA = Number(dadosConsolidadosDezenas.find(d => d.tipoParametro ===
+                  TipoParametroDezenasConsolidado.REPETIDAS_CA)[criterio.nome.toLowerCase()]);
+                criterio.novasCA = 0; // Ajuste se quiser usar dezenas novas do último concurso
+              });
+
+              const qtdDezenas = 15; // ou outro valor conforme parâmetro
+              const tabela = document.createElement('table');
+              tabela.style.marginTop = '2em';
+              tabela.innerHTML = `
               <thead>
                 <tr>
                   <th>Critério</th>
@@ -530,36 +582,39 @@
               </thead>
               <tbody></tbody>
             `;
-            const tbody = tabela.querySelector('tbody');
+              const tbody = tabela.querySelector('tbody');
 
-            criteriosList.forEach(criterio => {
-              const dezenas = gerarConcurso(qtdDezenas, criterio, estatisticas, ultimoConcursoDezenas, ultimoConcursoDezenasAusentes);
+              criteriosList.forEach(criterio => {
+                const dezenas = gerarConcurso(qtdDezenas, criterio, estatisticas, ultimoConcursoDezenas,
+                  ultimoConcursoDezenasAusentes);
                 const dezenasHtml = dezenas.map(d => {
-                const isMaisSorteada = estatisticas.maisSorteadas.map(ms => ms.dezena).includes(d);
-                const isMaisAusente = estatisticas.maisAusentes.map(ma => ma.dezena).includes(d);
-                const isRepetidaCA = ultimoConcursoDezenas.includes(d);
-                let backColor = 'none';
-                if (isMaisSorteada && isMaisAusente) {
-                  backColor = 'thistle';
-                } else if (isMaisSorteada) {
-                  backColor = 'mediumseagreen';
-                } else if (isMaisAusente) {
-                  backColor = '#f2f28a';
-                }
-                const borderStyle = isRepetidaCA ? 'border:3px solid #888;' : '';
-                return `<span style="background:${backColor};padding:2px 6px;border-radius:4px;${borderStyle}">${d}</span>`;
+                  const isMaisSorteada = estatisticas.maisSorteadas.map(ms => ms.dezena).includes(d);
+                  const isMaisAusente = estatisticas.maisAusentes.map(ma => ma.dezena).includes(d);
+                  const isRepetidaCA = ultimoConcursoDezenas.includes(d);
+                  let backColor = 'none';
+                  if (isMaisSorteada && isMaisAusente) {
+                    backColor = 'thistle';
+                  } else if (isMaisSorteada) {
+                    backColor = 'mediumseagreen';
+                  } else if (isMaisAusente) {
+                    backColor = '#f2f28a';
+                  }
+                  const borderStyle = isRepetidaCA ? 'border:3px solid #888;' : '';
+                  return `<span style="background:${backColor};padding:2px 6px;border-radius:4px;${borderStyle}">${d}</span>`;
                 }).join(', ');
-              const tr = document.createElement('tr');
-              tr.innerHTML = `<td>${criterio.nome}</td><td>${dezenasHtml}</td><td>${obterPadraoAlternanciaFormatado(dezenas)}</td>`;
-              tbody.appendChild(tr);
-            });
+                const tr = document.createElement('tr');
+                tr.innerHTML =
+                  `<td>${criterio.nome}</td><td>${dezenasHtml}</td><td>${obterPadraoAlternanciaFormatado(dezenas)}</td>`;
+                tbody.appendChild(tr);
+              });
 
-            document.body.appendChild(tabela);
-          }
+              document.body.appendChild(tabela);
+            }
 
-          // Chame a função após o carregamento dos dados consolidados e estatísticas
-          // Exemplo (coloque após o processamento dos dados no seu script):
-          gerarTabelaConcursosSimulados(estatisticas, dadosConsolidadosDezenas, ultimoConcursoDezenas, ultimoConcursoDezenasAusentes);
+            // Chame a função após o carregamento dos dados consolidados e estatísticas
+            // Exemplo (coloque após o processamento dos dados no seu script):
+            gerarTabelaConcursosSimulados(estatisticas, dadosConsolidadosDezenas, ultimoConcursoDezenas,
+              ultimoConcursoDezenasAusentes);
 
           });
       });

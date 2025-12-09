@@ -7,6 +7,7 @@ export class Concurso {
   private static readonly TODAS_DEZENAS = Array.from({ length: 25 }, (_, i) => i + 1);
 
   private _dezenasNaoSorteadas: number[] = [];
+  private _padraoAlternancia: Map<number, number> | null;
 
   private constructor(
     private readonly _numero: number,
@@ -31,6 +32,7 @@ export class Concurso {
   ) {
     this.validateDezenas();
     this._dezenasNaoSorteadas = Concurso.TODAS_DEZENAS.filter(d => !this._dezenas.includes(d));
+    this._padraoAlternancia = new Map<number, number>();
   }
 
   static create(
@@ -167,6 +169,13 @@ export class Concurso {
   }
   public set estaticPreConcMaisOcorrencias(value: number[]) {
     this._estaticPreConcMaisOcorrencias = value;
+  }
+
+  public get padraoAlternancia(): Map<number, number> | null {
+    return this._padraoAlternancia;
+  }
+  public set padraoAlternancia(value: Map<number, number> | null) {
+    this._padraoAlternancia = value;
   }
 
   containsDezena(dezena: number): boolean {

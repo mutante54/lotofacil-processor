@@ -9,7 +9,13 @@ export class QueryConcursos {
   ) {}
 
   async findAll(): Promise<Concurso[]> {
-    return this.concursoRepository.findAll();
+    const concursos = await this.concursoRepository.findAll();
+
+    concursos.forEach(c => {
+      c.padraoAlternancia = this.obterPadraoAlternancia(c.dezenas);
+    });
+
+    return concursos;
   }
 
   async findByNumero(numero: number): Promise<Concurso | null> {
@@ -25,7 +31,12 @@ export class QueryConcursos {
       throw new Error('Limite deve estar entre 1 e 100');
     }
     
-    return this.concursoRepository.findLatest(limit);
+    const concursos = await this.concursoRepository.findLatest(limit);
+    concursos.forEach(c => {
+      c.padraoAlternancia = this.obterPadraoAlternancia(c.dezenas);
+    });
+
+    return concursos;
   }
 
   async getCount(): Promise<number> {
@@ -41,4 +52,42 @@ export class QueryConcursos {
     const latestConcursos = await this.concursoRepository.findLatest(latestCount);
     return DezenasEstatisticasService.calcular(latestConcursos);
   }
+
+  obterPadraoAlternancia(dezenas: number[]): Map<number, number> | null {
+    let padroesAlternancia = new Map<number, number>();
+    if (!dezenas || dezenas.length === 0) {
+      return null;
+    }
+    let countPadraoAlternancia2 = 0;
+    let countPadraoAlternancia3 = 0;
+    let countPadraoAlternancia4 = 0;
+    for (let i = 0; i < dezenas.length; i++) {
+        const current = dezenas[i];
+        // pega a próxima dezena ou 26 se for a última (25 é o maior número possível + 1 para base de calculo)
+        const next = i < (dezenas.length - 1) ? dezenas[i + 1] : 26;
+        if (current === undefined || next === undefined) {
+          continue;
+        }
+        let diff = next - current;
+        if (diff == 3) {
+          countPadraoAlternancia2++;
+        }
+        else if (diff == 4) {
+          countPadraoAlternancia3++;
+        }
+        else if (diff == 5) { 
+          countPadraoAlternancia4++;
+        }
+      }
+      if (countPadraoAlternancia2 > 0) {
+        padroesAlternancia.set(2, countPadraoAlternancia2);
+      }
+      if (countPadraoAlternancia3 > 0) {        
+        padroesAlternancia.set(3, countPadraoAlternancia3);
+      }
+      if (countPadraoAlternancia4 > 0) {
+        padroesAlternancia.set(4, countPadraoAlternancia4);
+      }
+      return padroesAlternancia;
+    }
 }
