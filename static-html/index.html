@@ -61,7 +61,128 @@
       <tbody></tbody>
     </table>
   </div>
+  <!-- Modal for Mirror Games -->
+  <div id="mirrorGamesModal"
+    style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#fff;padding:2em;border-radius:8px;max-width:500px;margin:auto;position:relative;">
+      <h2>Gerar Jogos Espelho</h2>
+      <label>Quantidade de jogos:<br>
+        <input type="number" id="mirrorGamesQtdJogos" min="1" value="5" style="width:80px;">
+      </label><br><br>
+      <label>Quantidade de dezenas por jogo:<br>
+        <input type="number" id="mirrorGamesQtdDezenas" min="1" max="25" value="15" style="width:80px;">
+      </label><br><br>
+      <label>Dezenas a repetir em todos os jogos:<br>
+        <div id="mirrorGamesDezenasRepeat" style="margin-top:5px;margin-bottom:10px;"></div>
+      </label>
+      <button id="mirrorGamesGenerateBtn">Gerar Jogos</button>
+      <button id="mirrorGamesUpdateBtn">Atualizar Jogos</button>
+      <button id="mirrorGamesCloseBtn" type="button" style="position:absolute;top:10px;right:10px;">&times;</button>
+      <div id="mirrorGamesResults" style="margin-top:1em;"></div>
+    </div>
+  </div>
   <script>
+    // Add event listener for modal close button (CSP safe)
+    document.addEventListener('DOMContentLoaded', function () {
+      var closeBtn = document.getElementById('mirrorGamesCloseBtn');
+      if (closeBtn) {
+        closeBtn.addEventListener('click', closeMirrorGamesModal);
+      }
+    });
+    // Mirror Games Modal Logic
+    let mirrorGamesSelectedDezenas = [];
+    let mirrorGamesBaseDezenas = [];
+    let mirrorGamesParams = {
+      qtdJogos: 5,
+      qtdDezenas: 15,
+      dezenasRepeat: []
+    };
+
+    function openMirrorGamesModal(dezenas) {
+      mirrorGamesBaseDezenas = dezenas;
+      // Only reset dezenasRepeat if base dezenas changed
+      if (JSON.stringify(mirrorGamesBaseDezenas) !== JSON.stringify(dezenas)) {
+        mirrorGamesParams.dezenasRepeat = [];
+      }
+      document.getElementById('mirrorGamesQtdJogos').value = mirrorGamesParams.qtdJogos;
+      document.getElementById('mirrorGamesQtdDezenas').value = mirrorGamesParams.qtdDezenas;
+      renderMirrorGamesDezenasRepeat(dezenas);
+      generateMirrorGames();
+      document.getElementById('mirrorGamesModal').style.display = 'flex';
+    }
+
+    function closeMirrorGamesModal() {
+      document.getElementById('mirrorGamesModal').style.display = 'none';
+    }
+
+    function renderMirrorGamesDezenasRepeat(dezenas) {
+      const container = document.getElementById('mirrorGamesDezenasRepeat');
+      container.innerHTML = dezenas.map(d =>
+        `<label style='margin-right:8px;'><input type='checkbox' value='${d}' class='mirror-dezena-checkbox'>${d}</label>`
+      ).join(' ');
+      // Add event listeners CSP-safe
+      container.querySelectorAll('.mirror-dezena-checkbox').forEach(cb => {
+        cb.addEventListener('change', function() {
+          const val = Number(this.value);
+          if (this.checked) {
+            if (!mirrorGamesParams.dezenasRepeat.includes(val)) mirrorGamesParams.dezenasRepeat.push(val);
+          } else {
+            mirrorGamesParams.dezenasRepeat = mirrorGamesParams.dezenasRepeat.filter(d => d !== val);
+          }
+        });
+      });
+    }
+
+    function onMirrorGamesDezenaRepeatChange(checkbox) {
+      const val = Number(checkbox.value);
+      if (checkbox.checked) {
+        if (!mirrorGamesParams.dezenasRepeat.includes(val)) mirrorGamesParams.dezenasRepeat.push(val);
+      } else {
+        mirrorGamesParams.dezenasRepeat = mirrorGamesParams.dezenasRepeat.filter(d => d !== val);
+      }
+    }
+
+    document.getElementById('mirrorGamesGenerateBtn').onclick = function () {
+      mirrorGamesParams.qtdJogos = Number(document.getElementById('mirrorGamesQtdJogos').value);
+      mirrorGamesParams.qtdDezenas = Number(document.getElementById('mirrorGamesQtdDezenas').value);
+      generateMirrorGames();
+    };
+    document.getElementById('mirrorGamesUpdateBtn').onclick = function () {
+      generateMirrorGames();
+    };
+
+    function generateMirrorGames() {
+      const {
+        qtdJogos,
+        qtdDezenas,
+        dezenasRepeat
+      } = mirrorGamesParams;
+      const allDezenas = Array.from({
+        length: 25
+      }, (_, i) => i + 1);
+      let jogos = [];
+      for (let i = 0; i < qtdJogos; i++) {
+        let jogo = [...dezenasRepeat];
+        let restantes = allDezenas.filter(d => !jogo.includes(d));
+        while (jogo.length < qtdDezenas && restantes.length > 0) {
+          const idx = Math.floor(Math.random() * restantes.length);
+          jogo.push(restantes[idx]);
+          restantes.splice(idx, 1);
+        }
+        jogo = Array.from(new Set(jogo)).slice(0, qtdDezenas).sort((a, b) => a - b);
+        jogos.push(jogo);
+      }
+      // Display results
+      const html = jogos.map((jogo, idx) =>
+        `<div style='margin-bottom:8px;'><b>Jogo ${idx+1}:</b> ` +
+        jogo.map(d => {
+          const isRepeat = dezenasRepeat.includes(d);
+          return `<span style="background:${isRepeat ? '#d1e7dd' : 'none'};padding:2px 6px;border-radius:4px;">${d}</span>`;
+        }).join(', ') + '</div>'
+      ).join('');
+      document.getElementById('mirrorGamesResults').innerHTML = html;
+    }
+
     function obterPadraoAlternanciaFormatado(dezenas) {
       let countPadraoAlternancia2 = 0;
       let countPadraoAlternancia3 = 0;
@@ -578,6 +699,7 @@
                   <th>Critério</th>
                   <th>Dezenas Geradas</th>
                   <th>Padrão Altern.</th>
+                  <th>Ação</th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -604,8 +726,17 @@
                 }).join(', ');
                 const tr = document.createElement('tr');
                 tr.innerHTML =
-                  `<td>${criterio.nome}</td><td>${dezenasHtml}</td><td>${obterPadraoAlternanciaFormatado(dezenas)}</td>`;
+                  `<td>${criterio.nome}</td><td>${dezenasHtml}</td><td>${obterPadraoAlternanciaFormatado(dezenas)}</td><td><button class="btn-mirror-games" data-dezenas="${dezenas.join(',')}">Gerar Jogos Espelho</button></td>`;
                 tbody.appendChild(tr);
+                // Add event listeners to the new buttons (after all rows are appended)
+                setTimeout(() => {
+                  document.querySelectorAll('.btn-mirror-games').forEach(btn => {
+                    btn.addEventListener('click', function () {
+                      const dezenas = this.getAttribute('data-dezenas').split(',').map(Number);
+                      openMirrorGamesModal(dezenas);
+                    });
+                  });
+                }, 0);
               });
 
               document.body.appendChild(tabela);
