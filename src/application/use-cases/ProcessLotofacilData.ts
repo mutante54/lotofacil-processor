@@ -6,7 +6,7 @@ import { DezenasEstatisticasService } from '@application/services/DezenasEstatis
 export class ProcessLotofacilData {
 
   private static readonly LATEST_QTD = 50;
-  private static readonly TOP_ESTATISTICAS_QTD = 10;
+  private static readonly TOP_ESTATISTICAS_QTD = 5;
 
   constructor(
     private readonly concursoRepository: ConcursoRepository,

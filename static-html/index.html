@@ -34,9 +34,9 @@
     <thead>
       <tr>
         <th style="background-color: mediumseagreen;">Dezenas que mais ocorrem</th>
-        <th style="background-color: #acc5ab">Dez. Maior Sequência - Ocorrências <i>(min = 3)</i></th>
+        <th style="background-color: #acc5ab">Dez. Maior Sequência - Ocorrências <i>(min = 2)</i></th>
         <th style="background-color: #f2f28a">Dezenas mais ausentes</th>
-        <th style="background-color: #e7e6a9">Dez. Maior Sequência - Ausente <i>(min = 3)</i></th>
+        <th style="background-color: #e7e6a9">Dez. Maior Sequência - Ausente <i>(min = 2)</i></th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -76,7 +76,7 @@
         <div id="mirrorGamesDezenasRepeat" style="margin-top:5px;margin-bottom:10px;"></div>
       </label>
       <button id="mirrorGamesGenerateBtn">Gerar Jogos</button>
-      <button id="mirrorGamesUpdateBtn">Atualizar Jogos</button>
+      <button id="mirrorGamesSugRepeatBtn">Sugerir Repetições</button>
       <button id="mirrorGamesCloseBtn" type="button" style="position:absolute;top:10px;right:10px;">&times;</button>
       <div id="mirrorGamesResults" style="margin-top:1em;"></div>
     </div>
@@ -107,22 +107,33 @@
       document.getElementById('mirrorGamesQtdJogos').value = mirrorGamesParams.qtdJogos;
       document.getElementById('mirrorGamesQtdDezenas').value = mirrorGamesParams.qtdDezenas;
       renderMirrorGamesDezenasRepeat(dezenas);
-      generateMirrorGames();
+      // generateMirrorGames();
       document.getElementById('mirrorGamesModal').style.display = 'flex';
     }
 
     function closeMirrorGamesModal() {
+      document.getElementById('mirrorGamesResults').innerHTML = '';
       document.getElementById('mirrorGamesModal').style.display = 'none';
     }
 
     function renderMirrorGamesDezenasRepeat(dezenas) {
       const container = document.getElementById('mirrorGamesDezenasRepeat');
-      container.innerHTML = dezenas.map(d =>
-        `<label style='margin-right:8px;'><input type='checkbox' value='${d}' class='mirror-dezena-checkbox'>${d}</label>`
-      ).join(' ');
+      const maisSorteadasSet = new Set((estatisticas.maisSorteadas || []).map(ms => ms.dezena));
+      const maisAusentesSet = new Set((estatisticas.maisAusentes || []).map(ma => ma.dezena));
+      container.innerHTML = dezenas.map(d => {
+        let backColor = 'none';
+        if (maisSorteadasSet.has(d) && maisAusentesSet.has(d)) {
+          backColor = 'thistle';
+        } else if (maisSorteadasSet.has(d)) {
+          backColor = 'mediumseagreen';
+        } else if (maisAusentesSet.has(d)) {
+          backColor = '#f2f28a';
+        }
+        return `<label style='margin-right:8px;padding:2px 6px;border-radius:4px;background:${backColor};'><input type='checkbox' value='${d}' class='mirror-dezena-checkbox' style='margin-right:6px;'>${d}</label>`
+      }).join(' ');
       // Add event listeners CSP-safe
       container.querySelectorAll('.mirror-dezena-checkbox').forEach(cb => {
-        cb.addEventListener('change', function() {
+        cb.addEventListener('change', function () {
           const val = Number(this.value);
           if (this.checked) {
             if (!mirrorGamesParams.dezenasRepeat.includes(val)) mirrorGamesParams.dezenasRepeat.push(val);
@@ -146,10 +157,63 @@
       mirrorGamesParams.qtdJogos = Number(document.getElementById('mirrorGamesQtdJogos').value);
       mirrorGamesParams.qtdDezenas = Number(document.getElementById('mirrorGamesQtdDezenas').value);
       generateMirrorGames();
-    };
-    document.getElementById('mirrorGamesUpdateBtn').onclick = function () {
-      generateMirrorGames();
-    };
+    };    
+
+    // Sugere dezenas para repetir segundo prioridades definidas nas estatísticas
+    document.getElementById('mirrorGamesSugRepeatBtn').addEventListener('click', function () {
+      sugerirDezenasParaRepeticao();
+    });
+
+    function sugerirDezenasParaRepeticao() {
+      // garante que estatisticas esteja disponível
+      const maisSorteadas = (estatisticas.maisSorteadas || []).map(i => i.dezena);
+      const maisAusentes = (estatisticas.maisAusentes || []).map(i => i.dezena);
+      const maioresSeq = (estatisticas.maioresSequencias || []).map(i => ({ dezena: i.dezena, seq: i.sequencia || i.sequencia || 0 }));
+      const maioresSeqAusente = (estatisticas.maioresSequenciasAusente || []).map(i => ({ dezena: i.dezena, seq: i.sequencia || 0 }));
+
+      const setMaisS = new Set(maisSorteadas);
+      const setMaisA = new Set(maisAusentes);
+
+      // a) presentes em ambas
+      const prioridadeA = Array.from(setMaisS).filter(d => setMaisA.has(d));
+
+      // b) presentes em uma das duas (exclui já incluídas em a)
+      const union = Array.from(new Set([...maisSorteadas, ...maisAusentes]));
+      const prioridadeB = union.filter(d => !prioridadeA.includes(d));
+
+      // c) critérios de maioresSequencias vs maioresSequenciasAusente
+      const mapSeq = new Map(maioresSeq.map(i => [i.dezena, Number(i.seq) || 0]));
+      const mapSeqAus = new Map(maioresSeqAusente.map(i => [i.dezena, Number(i.seq) || 0]));
+      const maxSeqAus = maioresSeqAusente.length > 0 ? Math.max(...maioresSeqAusente.map(i => Number(i.sequencia || 0))) : 0;
+
+      const prioridadeC = [];
+      for (const [dezena, seq] of mapSeq.entries()) {
+        const seqAus = mapSeqAus.get(dezena) || 0;
+        if (seq > seqAus && seq > maxSeqAus) {
+          prioridadeC.push(Number(dezena));
+        }
+      }
+
+      // Combina as prioridades na ordem solicitada, removendo duplicatas
+      const combinado = [];
+      prioridadeA.forEach(d => { if (!combinado.includes(Number(d))) combinado.push(Number(d)); });
+      prioridadeB.forEach(d => { if (!combinado.includes(Number(d))) combinado.push(Number(d)); });
+      prioridadeC.forEach(d => { if (!combinado.includes(Number(d))) combinado.push(Number(d)); });
+
+      // Atualiza mirrorGamesParams.dezenasRepeat e checkboxes no DOM
+      mirrorGamesParams.dezenasRepeat = combinado;
+
+      const container = document.getElementById('mirrorGamesDezenasRepeat');
+      if (container) {
+        container.querySelectorAll('.mirror-dezena-checkbox').forEach(cb => {
+          const val = Number(cb.value);
+          cb.checked = mirrorGamesParams.dezenasRepeat.includes(val);
+        });
+      }
+
+      // Atualiza resultados
+      // generateMirrorGames();
+    }
 
     function generateMirrorGames() {
       const {
@@ -355,6 +419,7 @@
             let mediaMaisOcorrem = Number((somaCountMaisOcorremTotal / concursos.length).toFixed(0));
             let mediaMaisAtrasadas = Number((somaCountMaisAtrasadasTotal / concursos.length).toFixed(0));
             let mediaAmbas = Number((somaCountAmbasTotal / concursos.length).toFixed(0));
+            let mediaAmbasFixed2 = Number((somaCountAmbasTotal / concursos.length).toFixed(2));
             let mediaDezenasAusentes = Number((somaCountDezenasAusentes / concursos.length).toFixed(0));
             let mediaDezenasNovasCA = Number((somaCountDezenasNovasCA / concursos.length).toFixed(0));
             let mediaDezenasRepetidasCA = Number((somaCountDezenasRepetidasCA / concursos.length).toFixed(0));
@@ -545,7 +610,7 @@
             });
             dadosConsolidadosDezenas.push({
               tipoParametro: TipoParametroDezenasConsolidado.AMBAS,
-              media: mediaAmbas,
+              media: mediaAmbas == 0 && mediaAmbasFixed2 > 0 ? 1 : mediaAmbas,
               mediana: medianaAmbas,
               moda: modaAmbas,
               min: minAmbas,
@@ -577,16 +642,51 @@
             /**
              * Gera um concurso de acordo com os critérios estatísticos
              */
-            function gerarConcurso(qtdDezenas, criterios, estatisticas, ultimoConcursoDezenas,
-              ultimoConcursoDezenasAusentes) {
+            function gerarConcurso(qtdDezenas, criterios, estatisticas, ultimoConcursoDezenas) {
               let dezenas = [];
               let usadas = [];
+              let qtdMaisOcorremUsadas = 0;
+              const maisSorteadas = new Set((estatisticas.maisSorteadas || []).map(ms => ms.dezena));
+              const maisAusentes = new Set((estatisticas.maisAusentes || []).map(ma => ma.dezena));
 
               // Repetidas CA
               if (criterios.repetidasCA > 0 && ultimoConcursoDezenas.length > 0) {
-                const rep = sortearDezenas(ultimoConcursoDezenas, criterios.repetidasCA, usadas);
+                // candidatos preferenciais: do último concurso, entre as dezenas que mais ocorrem, obedecendo o limite do critéro MaisOcorrem
+                const candidatosFiltrados = ultimoConcursoDezenas.filter(d => maisSorteadas.has(d) && !usadas
+                  .includes(d)).slice(0, criterios.maisOcorrem);
+                let rep = sortearDezenas(candidatosFiltrados, candidatosFiltrados.length, usadas);
+                qtdMaisOcorremUsadas += rep.length;
+
+                if (rep.length < criterios.repetidasCA) {
+                  // se não atingiu o número desejado, completa com outras dezenas do último concurso (que não sejam as mais ocorrem)
+                  const restantes = ultimoConcursoDezenas.filter(d => !maisSorteadas.has(d));
+                  const adicionais = sortearDezenas(restantes, (criterios.repetidasCA - rep.length), rep);
+                  rep = rep.concat(adicionais);
+                }
+
                 dezenas = dezenas.concat(rep);
                 usadas = usadas.concat(rep);
+              }
+
+              // Mais sorteadas (desde que o critério Repetidas CA não tenha usado todas - 
+              // e desde que nao estejam entre as mais ausentes - evita conflito com critério Ambas)
+              if (criterios.maisOcorrem > 0 && qtdMaisOcorremUsadas < criterios.maisOcorrem) {
+                const maisSorteadasFiltrados = estatisticas.maisSorteadas.filter(d => !ultimoConcursoDezenas
+                  .includes(d.dezena) && !maisAusentes.has(d.dezena) && !usadas.includes(d.dezena)).map(d => d
+                  .dezena);
+                const maisOcorremEscolhidas = sortearDezenas(maisSorteadasFiltrados, (criterios.maisOcorrem -
+                  qtdMaisOcorremUsadas), usadas);
+                dezenas = dezenas.concat(maisOcorremEscolhidas);
+                usadas = usadas.concat(maisOcorremEscolhidas);
+              }
+
+              // Mais atrasadas (não podem estar entre as mais sorteadas - evita conflito com critério Ambas)
+              if (criterios.maisAtrasadas > 0) {
+                const maisAtrasadasFiltradas = estatisticas.maisAusentes.filter(ma => !maisSorteadas.has(ma.dezena))
+                  .map(ma => ma.dezena);
+                const atrasadasEscolhidas = sortearDezenas(maisAtrasadasFiltradas, criterios.maisAtrasadas, usadas);
+                dezenas = dezenas.concat(atrasadasEscolhidas);
+                usadas = usadas.concat(atrasadasEscolhidas);
               }
 
               // Ambas (mais sorteadas e mais ausentes)
@@ -597,37 +697,16 @@
                 const ambasEscolhidas = sortearDezenas(ambas, criterios.ambas, usadas);
                 dezenas = dezenas.concat(ambasEscolhidas);
                 usadas = usadas.concat(ambasEscolhidas);
-              }
+              }             
 
-              // Mais atrasadas
-              if (criterios.maisAtrasadas > 0) {
-                const atrasadas = estatisticas.maisAusentes.map(ma => ma.dezena);
-                const atrasadasEscolhidas = sortearDezenas(atrasadas, criterios.maisAtrasadas, usadas);
-                dezenas = dezenas.concat(atrasadasEscolhidas);
-                usadas = usadas.concat(atrasadasEscolhidas);
-              }
-
-              // Mais sorteadas
-              if (criterios.maisOcorrem > 0) {
-                const maisOcorrem = estatisticas.maisSorteadas.map(ms => ms.dezena);
-                const maisOcorremEscolhidas = sortearDezenas(maisOcorrem, criterios.maisOcorrem, usadas);
-                dezenas = dezenas.concat(maisOcorremEscolhidas);
-                usadas = usadas.concat(maisOcorremEscolhidas);
-              }
-
-              // Novas em relação ao último concurso
-              if (criterios.novasCA > 0 && ultimoConcursoDezenasAusentes.length > 0) {
-                const novas = sortearDezenas(ultimoConcursoDezenasAusentes, criterios.novasCA, usadas);
-                dezenas = dezenas.concat(novas);
-                usadas = usadas.concat(novas);
-              }
-
-              // Completa com dezenas aleatórias se faltar
+              // Completa com dezenas aleatórias se faltar (double-check para garantir que dezenas do último concurso não sejam usadas aqui)
+              // além disso, evita usar as dezenas mais ausentes (top 5). Neste caso, se faltar, sorteia entre as demais 5 dezenas aleatórias restantes.
               if (dezenas.length < qtdDezenas) {
                 const todas = Array.from({
                   length: 25
                 }, (_, i) => i + 1);
-                const restantes = sortearDezenas(todas, qtdDezenas - dezenas.length, usadas);
+                const todasFiltradas = todas.filter(d => !ultimoConcursoDezenas.includes(d) && !maisAusentes.has(d));
+                const restantes = sortearDezenas(todasFiltradas, qtdDezenas - dezenas.length, usadas);
                 dezenas = dezenas.concat(restantes);
               }
 
@@ -635,6 +714,30 @@
               dezenas = Array.from(new Set(dezenas)).slice(0, qtdDezenas);
 
               return dezenas.sort((a, b) => a - b);
+            }
+
+            /**
+             * Embaralha um array usando o algoritmo de Fisher-Yates
+             * @param {Array} array - O array a ser embaralhado
+             * @returns {Array} - O array embaralhado
+             */
+            function shuffle(array) {
+              let currentIndex = array.length,
+                randomIndex;
+
+              // Enquanto houver elementos para embaralhar.
+              while (currentIndex !== 0) {
+                // Pega um elemento restante.
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+
+                // E troca com o elemento atual.
+                [array[currentIndex], array[randomIndex]] = [
+                  array[randomIndex], array[currentIndex]
+                ];
+              }
+
+              return array;
             }
 
             /**
@@ -662,20 +765,6 @@
                     .OCORRENCIAS),
                   maisOcorrem: Number(dadosConsolidadosDezenas.find(d => d.tipoParametro ===
                     TipoParametroDezenasConsolidado.OCORRENCIAS).moda)
-                },
-                {
-                  nome: 'Min',
-                  ...dadosConsolidadosDezenas.find(d => d.tipoParametro === TipoParametroDezenasConsolidado
-                    .OCORRENCIAS),
-                  maisOcorrem: Number(dadosConsolidadosDezenas.find(d => d.tipoParametro ===
-                    TipoParametroDezenasConsolidado.OCORRENCIAS).min)
-                },
-                {
-                  nome: 'Max',
-                  ...dadosConsolidadosDezenas.find(d => d.tipoParametro === TipoParametroDezenasConsolidado
-                    .OCORRENCIAS),
-                  maisOcorrem: Number(dadosConsolidadosDezenas.find(d => d.tipoParametro ===
-                    TipoParametroDezenasConsolidado.OCORRENCIAS).max)
                 },
               ];
 
@@ -707,8 +796,7 @@
               const tbody = tabela.querySelector('tbody');
 
               criteriosList.forEach(criterio => {
-                const dezenas = gerarConcurso(qtdDezenas, criterio, estatisticas, ultimoConcursoDezenas,
-                  ultimoConcursoDezenasAusentes);
+                const dezenas = gerarConcurso(qtdDezenas, criterio, estatisticas, shuffle(ultimoConcursoDezenas));
                 const dezenasHtml = dezenas.map(d => {
                   const isMaisSorteada = estatisticas.maisSorteadas.map(ms => ms.dezena).includes(d);
                   const isMaisAusente = estatisticas.maisAusentes.map(ma => ma.dezena).includes(d);

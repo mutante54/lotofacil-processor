@@ -3,9 +3,9 @@ import { Concurso } from '@domain/entities/Concurso';
 
 export class DezenasEstatisticasService {
 
-  static calcular(concursos: Concurso[], qtdToSlice: number = 10): DezenasEstatisticas {
+  static calcular(concursos: Concurso[], qtdToSlice: number = 5): DezenasEstatisticas {
     if (concursos == null || concursos.length === 0) {
-      return DezenasEstatisticas.create([], [], [], 0, qtdToSlice);
+      return DezenasEstatisticas.create([], [], [], [], 0, qtdToSlice);
     }
     // Calcula as dezenas mais sorteadas
     const ocorrencias = new Map<number, number>();
@@ -47,8 +47,8 @@ export class DezenasEstatisticasService {
       }
 
       ultimoConcurso = concursosOrdenados[0]?.numero || 0;
-      const MIN_SEQUENCIA_OCORR = 3;
-      const MIN_SEQUENCIA_AUSENTE = 3;
+      const MIN_SEQUENCIA_OCORR = 2;
+      const MIN_SEQUENCIA_AUSENTE = 2;
       for (const concurso of concursosOrdenados) {
         if (concurso.containsDezena(dezena)) {
           concursosSequenciaOcorr = (concurso.numero == ultimoConcurso - 1) ? concursosSequenciaOcorr + 1 : concursosSequenciaOcorr;

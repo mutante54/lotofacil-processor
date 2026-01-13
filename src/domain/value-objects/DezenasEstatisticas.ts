@@ -29,7 +29,7 @@ export class DezenasEstatisticas {
     maioresSequencias: DezenaMaiorSequencia[],
     maioresSequenciasAusente: DezenaMaiorSequencia[],
     totalConcursosAnalisados: number,
-    qtdTop: number = 10
+    qtdTop: number = 5
   ): DezenasEstatisticas {
     const sortedMaisSorteadas = [...maisSorteadas]
       .sort((a, b) => b.ocorrencias - a.ocorrencias)
