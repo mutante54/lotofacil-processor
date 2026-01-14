@@ -175,22 +175,56 @@
       const setMaisA = new Set(maisAusentes);
 
       // a) presentes em ambas
-      const prioridadeA = Array.from(setMaisS).filter(d => setMaisA.has(d));
+      const prioridadeA = Array.from(setMaisS).filter(d => setMaisA.has(d) && mirrorGamesBaseDezenas.includes(d));
 
       // b) presentes em uma das duas (exclui já incluídas em a)
       const union = Array.from(new Set([...maisSorteadas, ...maisAusentes]));
-      const prioridadeB = union.filter(d => !prioridadeA.includes(d));
+      const prioridadeB = union.filter(d => !prioridadeA.includes(d) && mirrorGamesBaseDezenas.includes(d));
 
       // c) critérios de maioresSequencias vs maioresSequenciasAusente
-      const mapSeq = new Map(maioresSeq.map(i => [i.dezena, Number(i.seq) || 0]));
-      const mapSeqAus = new Map(maioresSeqAusente.map(i => [i.dezena, Number(i.seq) || 0]));
-      const maxSeqAus = maioresSeqAusente.length > 0 ? Math.max(...maioresSeqAusente.map(i => Number(i.sequencia || 0))) : 0;
+      // Normaliza possíveis formatos de sequência (number | string | array) para array de números
+      function normalizeSeq(val) {
+        if (val === undefined || val === null) return [];
+        if (Array.isArray(val)) return val.map(Number).filter(v => !isNaN(v));
+        if (typeof val === 'number') return [val];
+        if (typeof val === 'string') {
+          const t = val.trim();
+          if (t.startsWith('[')) {
+            try {
+              const p = JSON.parse(t);
+              if (Array.isArray(p)) return p.map(Number).filter(v => !isNaN(v));
+            } catch (e) {}
+          }
+          if (t.indexOf(',') !== -1) return t.split(',').map(s => Number(s.trim())).filter(n => !isNaN(n));
+          const n = Number(t);
+          return isNaN(n) ? [] : [n];
+        }
+        return [];
+      }
 
+      const mapSeq = new Map(maioresSeq.map(i => [Number(i.dezena), normalizeSeq(i.sequencia || i.seq || i.sequencias)]));
+      const mapSeqAus = new Map(maioresSeqAusente.map(i => [Number(i.dezena), normalizeSeq(i.sequencia || i.seq || i.sequencias)]));
+
+      // Prioridade C: itera as dezenas do modal (`mirrorGamesBaseDezenas`) que ainda não estão em A ou B
       const prioridadeC = [];
-      for (const [dezena, seq] of mapSeq.entries()) {
-        const seqAus = mapSeqAus.get(dezena) || 0;
-        if (seq > seqAus && seq > maxSeqAus) {
-          prioridadeC.push(Number(dezena));
+      const candidatos = (Array.isArray(mirrorGamesBaseDezenas) && mirrorGamesBaseDezenas.length > 0 ? mirrorGamesBaseDezenas : []).filter(d => !prioridadeA.includes(d) && !prioridadeB.includes(d));
+
+      function isSeqSuperior(seqOccArr, seqAusArr) {
+        const occ = Array.isArray(seqOccArr) ? seqOccArr : normalizeSeq(seqOccArr);
+        const aus = Array.isArray(seqAusArr) ? seqAusArr : normalizeSeq(seqAusArr);
+        if (occ.length === 0 && aus.length === 0) return false;
+        return (occ.length > aus.length) && (Math.max(...occ) > Math.max(...(aus.length ? aus : [0])));
+      }
+
+      for (const d of candidatos) {
+        const dez = Number(d);
+        // só considera dezenas que ocorreram no último concurso
+        if (Array.isArray(ultimoConcursoDezenas) && ultimoConcursoDezenas.includes(dez)) {
+          const seqOcc = mapSeq.get(dez) || [];
+          const seqAus = mapSeqAus.get(dez) || [];
+          if (isSeqSuperior(seqOcc, seqAus)) {
+            prioridadeC.push(dez);
+          }
         }
       }
 
